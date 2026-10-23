@@ -14,6 +14,6 @@ Hallazgos de la construcción del esqueleto.
 
 ## Pendiente de Faku
 
-- [ ] Crear `faku-org/mychecklist` en GitHub (no existe todavía).
+- [x] Repo creado como `wefaber/mychecklist` (privado), PR #1 abierto.
 - [ ] Confirmar GitHub App en lugar de OAuth App (ADR 0003).
 - [ ] DNS de `checklist.wefaber.net` y vhost de Nginx.

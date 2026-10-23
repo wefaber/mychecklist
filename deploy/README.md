@@ -1,6 +1,6 @@
 # Deploy
 
-Push a `main` → `.github/workflows/deploy.yml` en el runner self-hosted de `faku-org` → `bun install --frozen-lockfile`,
+Push a `main` → `.github/workflows/deploy.yml` en el runner self-hosted de `wefaber` → `bun install --frozen-lockfile`,
 `bun run check`, `bun run build`, `deploy/mychecklist.sh <sha>`.
 
 `mychecklist.sh` es blue/green. El slot ocioso (`/home/hermes/mychecklist/{blue,green}`, puertos 4151/4152) recibe el

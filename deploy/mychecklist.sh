@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Blue/green deploy of MyChecklist (ARCHITECTURE.md › Deploy). Runs on the VPS from the faku-org self-hosted runner.
+# Blue/green deploy of MyChecklist (ARCHITECTURE.md › Deploy). Runs on the VPS from the wefaber self-hosted runner.
 #   deploy/mychecklist.sh <sha>        build is already in the workspace; install into the idle slot, check it, switch nginx
 #   deploy/mychecklist.sh --rollback   switch back to the previous slot (no rebuild)
 # The previous slot keeps running, so a rollback is a flip, not a rebuild.

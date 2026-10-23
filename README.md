@@ -43,5 +43,5 @@ bun run tauri dev         # app de escritorio (levanta dev:web solo)
 
 ## Deploy
 
-Push a `main` dispara `.github/workflows/deploy.yml` en el runner de `faku-org`, que corre `check`, `build` y
+Push a `main` dispara `.github/workflows/deploy.yml` en el runner de `wefaber`, que corre `check`, `build` y
 `deploy/mychecklist.sh` (blue/green). Para la instalación única en el VPS: [deploy/README.md](deploy/README.md).

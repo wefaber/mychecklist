@@ -1,6 +1,6 @@
 # MyChecklist
 
-App de listas y tareas (web + desktop). Herramienta de la casa WeFaber, repo `faku-org/mychecklist`.
+App de listas y tareas (web + desktop). Herramienta de la casa WeFaber, repo `wefaber/mychecklist`.
 
 ## Leer antes de trabajar
 
