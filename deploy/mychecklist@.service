@@ -1,6 +1,6 @@
 # Install: sudo cp deploy/mychecklist@.service /etc/systemd/system/ && sudo systemctl daemon-reload
-# One instance per slot, two listeners each (ADR 0001): mychecklist@blue (public 4151, tailnet 4153) and
-# mychecklist@green (public 4152, tailnet 4154). Rootless-friendly: runs as hermes.
+# One instance per slot, two listeners each (ADR 0001): mychecklist@blue (public 4161, tailnet 4163) and
+# mychecklist@green (public 4162, tailnet 4164). Rootless-friendly: runs as hermes.
 [Unit]
 Description=MyChecklist API (%i)
 After=network.target
@@ -12,7 +12,8 @@ WorkingDirectory=/home/hermes/mychecklist/%i
 EnvironmentFile=/home/hermes/deploy/env/mychecklist.env
 Environment=NODE_ENV=production
 Environment=MYCHECKLIST_DB=/home/hermes/data/mychecklist/mychecklist.db
-ExecStart=/bin/sh -c 'case "%i" in blue) P=4151; T=4153;; green) P=4152; T=4154;; esac; MYCHECKLIST_PORT=$P MYCHECKLIST_TAILNET_PORT=$T exec /opt/bun/bun server/index.ts'
+# APP_VERSION = REVISION del slot, para que la UI muestre el sha que está sirviendo.
+ExecStart=/bin/sh -c 'case "%i" in blue) P=4161; T=4163;; green) P=4162; T=4164;; esac; APP_VERSION=$(cat /home/hermes/mychecklist/%i/REVISION 2>/dev/null || echo dev); MYCHECKLIST_PORT=$P MYCHECKLIST_TAILNET_PORT=$T exec /opt/bun/bun server/index.ts'
 Restart=on-failure
 RestartSec=2
 NoNewPrivileges=true

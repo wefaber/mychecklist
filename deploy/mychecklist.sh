@@ -12,8 +12,8 @@ BUN=/opt/bun/bun
 SYSTEMCTL="sudo -n /usr/bin/systemctl"
 NGINX="sudo -n /usr/sbin/nginx"
 DOMAIN="${MYCHECKLIST_DOMAIN:-checklist.wefaber.net}"
-declare -A PORT=([blue]=4151 [green]=4152)     # public listener
-declare -A TPORT=([blue]=4153 [green]=4154)    # tailnet listener (ADR 0001)
+declare -A PORT=([blue]=4161 [green]=4162)     # public listener
+declare -A TPORT=([blue]=4163 [green]=4164)    # tailnet listener (ADR 0001)
 
 log() { printf '[mychecklist %s] %s\n' "$(date -u +%H:%M:%S)" "$*"; }
 other() { [[ "$1" == blue ]] && echo green || echo blue; }
@@ -47,8 +47,8 @@ preflight() { # slot
   for p in "$BASE" "$DATA" "$STATE"; do [[ -d $p && -w $p ]] || miss+=("2. directory missing or not writable: $p"); done
   [[ -r $ENV_FILE ]] || miss+=("3. env file missing or unreadable: $ENV_FILE")
   [[ -f $UNIT ]] || miss+=("4. systemd unit not installed: $UNIT (then: sudo systemctl daemon-reload)")
-  [[ -f $SNIPPET ]] || miss+=("5. nginx snippet missing: $SNIPPET (initial: set \$mychecklist_port 4151; set \$mychecklist_tailnet_port 4153; set \$mychecklist_root $BASE/blue/dist/web;)")
-  grep -rqs mychecklist-active.conf /etc/nginx/sites-enabled/ || miss+=("5. no enabled nginx vhost includes mychecklist-active.conf (deploy/nginx/mychecklist-next.conf)")
+  [[ -f $SNIPPET ]] || miss+=("5. nginx snippet missing: $SNIPPET (initial: set \$mychecklist_port 4161; set \$mychecklist_tailnet_port 4163; set \$mychecklist_root $BASE/blue/dist/web;)")
+  grep -Rqs mychecklist-active.conf /etc/nginx/sites-enabled/ || miss+=("5. no enabled nginx vhost includes mychecklist-active.conf (deploy/nginx/mychecklist.conf)")
   local cmds=(
     "/usr/bin/systemctl start mychecklist@$slot" "/usr/bin/systemctl stop mychecklist@$slot"
     "/usr/bin/systemctl status mychecklist@$slot" "/usr/bin/systemctl reload nginx"
@@ -91,7 +91,10 @@ log "deploying $SHA into $IDLE (live is $ACTIVE)"
 $SYSTEMCTL stop "mychecklist@$IDLE" 2>/dev/null || true
 rm -rf "${BASE:?}/$IDLE"
 mkdir -p "$BASE/$IDLE"
-cp -r dist server shared package.json bun.lock tsconfig.json "$BASE/$IDLE/"
+# Solo lo que existe: `shared/` figura en tsconfig pero todavía no tiene archivos.
+copy=()
+for f in dist server shared package.json bun.lock tsconfig.json; do [[ -e $f ]] && copy+=("$f"); done
+cp -r "${copy[@]}" "$BASE/$IDLE/"
 ( cd "$BASE/$IDLE" && $BUN install --frozen-lockfile --production )
 echo "$SHA" >"$BASE/$IDLE/REVISION"
 

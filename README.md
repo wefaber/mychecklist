@@ -27,7 +27,7 @@ Bun, Rust (MSVC) con las Build Tools de Visual Studio y WebView2. Solo la app de
 
 ```bash
 bun install
-bun run dev:server        # API en 127.0.0.1:4151
+bun run dev:server        # API en 127.0.0.1:4161
 bun run dev:web           # cliente en http://localhost:5191 (proxy a la API)
 bun run tauri dev         # app de escritorio (levanta dev:web solo)
 ```
