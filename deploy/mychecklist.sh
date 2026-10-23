@@ -43,12 +43,18 @@ DATA=/home/hermes/data/mychecklist
 # Read-only check of the one-time VPS setup (deploy/README.md). Lists everything that is missing, then stops
 # before the idle slot, the unit or nginx are touched.
 preflight() { # slot
-  local slot=$1 miss=() p
+  local slot=$1 miss=() p vhost found=
   for p in "$BASE" "$DATA" "$STATE"; do [[ -d $p && -w $p ]] || miss+=("2. directory missing or not writable: $p"); done
   [[ -r $ENV_FILE ]] || miss+=("3. env file missing or unreadable: $ENV_FILE")
   [[ -f $UNIT ]] || miss+=("4. systemd unit not installed: $UNIT (then: sudo systemctl daemon-reload)")
   [[ -f $SNIPPET ]] || miss+=("5. nginx snippet missing: $SNIPPET (initial: set \$mychecklist_port 4161; set \$mychecklist_tailnet_port 4163; set \$mychecklist_root $BASE/blue/dist/web;)")
-  grep -Rqs mychecklist-active.conf /etc/nginx/sites-enabled/ || miss+=("5. no enabled nginx vhost includes mychecklist-active.conf (deploy/nginx/mychecklist.conf)")
+  # Every entry in sites-enabled is a symlink and `grep -r` does not follow symlinks found while walking a directory,
+  # so it never matched and every deploy failed here. -f follows the link and skips the dangling ones.
+  local found=
+  for vhost in /etc/nginx/sites-enabled/*; do
+    if [[ -f $vhost ]] && grep -qs mychecklist-active.conf "$vhost"; then found=1; break; fi
+  done
+  [[ -n $found ]] || miss+=("5. no enabled nginx vhost includes mychecklist-active.conf (deploy/nginx/mychecklist.conf)")
   local cmds=(
     "/usr/bin/systemctl start mychecklist@$slot" "/usr/bin/systemctl stop mychecklist@$slot"
     "/usr/bin/systemctl status mychecklist@$slot" "/usr/bin/systemctl reload nginx"
