@@ -13,7 +13,7 @@ EnvironmentFile=/home/hermes/deploy/env/mychecklist.env
 Environment=NODE_ENV=production
 Environment=MYCHECKLIST_DB=/home/hermes/data/mychecklist/mychecklist.db
 # APP_VERSION = REVISION del slot, para que la UI muestre el sha que está sirviendo.
-ExecStart=/bin/sh -c 'case "%i" in blue) P=4161; T=4163;; green) P=4162; T=4164;; esac; APP_VERSION=$(cat /home/hermes/mychecklist/%i/REVISION 2>/dev/null || echo dev); MYCHECKLIST_PORT=$P MYCHECKLIST_TAILNET_PORT=$T exec /opt/bun/bun server/index.ts'
+ExecStart=/bin/sh -c 'case "%i" in blue) P=4161; T=4163;; green) P=4162; T=4164;; esac; export APP_VERSION=$(cat /home/hermes/mychecklist/%i/REVISION 2>/dev/null || echo dev); MYCHECKLIST_PORT=$P MYCHECKLIST_TAILNET_PORT=$T exec /opt/bun/bun server/index.ts'
 Restart=on-failure
 RestartSec=2
 NoNewPrivileges=true
