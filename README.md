@@ -32,6 +32,16 @@ bun run dev:web           # cliente en http://localhost:5191 (proxy a la API)
 bun run tauri dev         # app de escritorio (levanta dev:web solo)
 ```
 
+El login con GitHub es opcional en local: sin credenciales el resto anda y la UI avisa que el login no está
+disponible. Para probarlo, creá una GitHub App con el callback `http://localhost:5191/auth/github/callback` y poné
+en `.env.local` (Bun lo lee solo, está fuera del repo):
+
+```
+GITHUB_CLIENT_ID=...
+GITHUB_CLIENT_SECRET=...
+MYCHECKLIST_TOKEN_KEY=...   # openssl rand -base64 32
+```
+
 ## Scripts
 
 | Script          | Qué hace                                                                                    |

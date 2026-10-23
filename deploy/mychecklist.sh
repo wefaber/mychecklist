@@ -12,7 +12,8 @@ BUN=/opt/bun/bun
 SYSTEMCTL="sudo -n /usr/bin/systemctl"
 NGINX="sudo -n /usr/sbin/nginx"
 DOMAIN="${MYCHECKLIST_DOMAIN:-checklist.wefaber.net}"
-declare -A PORT=([blue]=4151 [green]=4152)
+declare -A PORT=([blue]=4151 [green]=4152)     # public listener
+declare -A TPORT=([blue]=4153 [green]=4154)    # tailnet listener (ADR 0001)
 
 log() { printf '[mychecklist %s] %s\n' "$(date -u +%H:%M:%S)" "$*"; }
 other() { [[ "$1" == blue ]] && echo green || echo blue; }
@@ -28,7 +29,8 @@ wait_for() { # url, tries
 
 point_nginx_at() { # slot
   local slot=$1
-  printf 'set $mychecklist_port %s;\nset $mychecklist_root %s/%s/dist/web;\n' "${PORT[$slot]}" "$BASE" "$slot" |
+  printf 'set $mychecklist_port %s;\nset $mychecklist_tailnet_port %s;\nset $mychecklist_root %s/%s/dist/web;\n' \
+    "${PORT[$slot]}" "${TPORT[$slot]}" "$BASE" "$slot" |
     sudo -n /usr/bin/tee "$SNIPPET" >/dev/null
   $NGINX -t
   $SYSTEMCTL reload nginx
@@ -45,7 +47,7 @@ preflight() { # slot
   for p in "$BASE" "$DATA" "$STATE"; do [[ -d $p && -w $p ]] || miss+=("2. directory missing or not writable: $p"); done
   [[ -r $ENV_FILE ]] || miss+=("3. env file missing or unreadable: $ENV_FILE")
   [[ -f $UNIT ]] || miss+=("4. systemd unit not installed: $UNIT (then: sudo systemctl daemon-reload)")
-  [[ -f $SNIPPET ]] || miss+=("5. nginx snippet missing: $SNIPPET (initial: set \$mychecklist_port 4151; set \$mychecklist_root $BASE/blue/dist/web;)")
+  [[ -f $SNIPPET ]] || miss+=("5. nginx snippet missing: $SNIPPET (initial: set \$mychecklist_port 4151; set \$mychecklist_tailnet_port 4153; set \$mychecklist_root $BASE/blue/dist/web;)")
   grep -rqs mychecklist-active.conf /etc/nginx/sites-enabled/ || miss+=("5. no enabled nginx vhost includes mychecklist-active.conf (deploy/nginx/mychecklist-next.conf)")
   local cmds=(
     "/usr/bin/systemctl start mychecklist@$slot" "/usr/bin/systemctl stop mychecklist@$slot"
@@ -55,9 +57,11 @@ preflight() { # slot
     # shellcheck disable=SC2086 # $p is a command line, split on purpose
     sudo -n -l $p >/dev/null 2>&1 || miss+=("6. sudoers does not allow, passwordless: sudo $p")
   done
-  if ! /usr/bin/systemctl is-active --quiet "mychecklist@$slot" 2>/dev/null && ss -ltnH "sport = :${PORT[$slot]}" 2>/dev/null | grep -q .; then
-    miss+=("1. port ${PORT[$slot]} is taken by another process: ss -ltnp 'sport = :${PORT[$slot]}'")
-  fi
+  for p in "${PORT[$slot]}" "${TPORT[$slot]}"; do
+    if ! /usr/bin/systemctl is-active --quiet "mychecklist@$slot" 2>/dev/null && ss -ltnH "sport = :$p" 2>/dev/null | grep -q .; then
+      miss+=("1. port $p is taken by another process: ss -ltnp 'sport = :$p'")
+    fi
+  done
   ((${#miss[@]} == 0)) && return 0
   log "preflight failed, the VPS setup is incomplete (step numbers are from deploy/README.md):"
   printf '  - %s\n' "${miss[@]}" >&2
@@ -70,7 +74,8 @@ IDLE=$(other "$ACTIVE")
 
 if [[ "${1:-}" == --rollback ]]; then
   log "rollback: $ACTIVE -> $IDLE"
-  wait_for "http://127.0.0.1:${PORT[$IDLE]}/ready" 5 || { log "slot $IDLE is not answering, rollback aborted"; exit 1; }
+  wait_for "http://127.0.0.1:${PORT[$IDLE]}/ready" 5 && wait_for "http://127.0.0.1:${TPORT[$IDLE]}/ready" 5 ||
+    { log "slot $IDLE is not answering on both listeners, rollback aborted"; exit 1; }
   point_nginx_at "$IDLE"
   echo "$IDLE" >"$STATE/active"
   wait_for "https://$DOMAIN/ready" 10 && log "rollback ok, $IDLE is live"
@@ -91,7 +96,7 @@ cp -r dist server shared package.json bun.lock tsconfig.json "$BASE/$IDLE/"
 echo "$SHA" >"$BASE/$IDLE/REVISION"
 
 $SYSTEMCTL start "mychecklist@$IDLE"
-if ! wait_for "http://127.0.0.1:${PORT[$IDLE]}/ready" 30; then
+if ! wait_for "http://127.0.0.1:${PORT[$IDLE]}/ready" 30 || ! wait_for "http://127.0.0.1:${TPORT[$IDLE]}/ready" 10; then
   log "slot $IDLE never became ready; $ACTIVE stays live"
   $SYSTEMCTL status "mychecklist@$IDLE" --no-pager -n 30 || true
   $SYSTEMCTL stop "mychecklist@$IDLE" || true

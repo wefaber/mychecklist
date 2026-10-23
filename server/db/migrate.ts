@@ -7,8 +7,11 @@ const FILE = /^(\d{4})_[a-z0-9_]+\.sql$/
 
 type Migration = { id: number; name: string; sql: string; checksum: string }
 
+/** El checksum ignora el tipo de fin de línea: un checkout con CRLF (Windows) y uno con LF (VPS) dan lo mismo. */
 function checksum(sql: string): string {
-  return new Bun.CryptoHasher('sha256').update(sql).digest('hex')
+  return new Bun.CryptoHasher('sha256')
+    .update(sql.replace(/\r\n/g, '\n'))
+    .digest('hex')
 }
 
 export function loadMigrations(dir: string = DEFAULT_DIR): Migration[] {
