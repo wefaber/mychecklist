@@ -5,6 +5,7 @@ import { githubClient } from './auth/github'
 import { loadConfig } from './config'
 import { openDb } from './db/connection'
 import { migrate } from './db/migrate'
+import { createBus } from './events'
 import { INGRESSES } from './ingress'
 
 const path = process.env.MYCHECKLIST_DB ?? './data/mychecklist.db'
@@ -21,9 +22,11 @@ if (!github || !config.tokenKey)
     'login con GitHub desactivado: faltan GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET o MYCHECKLIST_TOKEN_KEY',
   )
 
+const bus = createBus()
+
 // Un listener por puerta, ambos en loopback: Nginx es lo único que ve la red (ARCHITECTURE.md › Network, ADR 0001).
 for (const ingress of INGRESSES) {
-  createApp(db, { ingress, config, github, dev }).listen({
+  createApp(db, { ingress, config, github, bus, dev }).listen({
     hostname: '127.0.0.1',
     port: config.ports[ingress],
   })

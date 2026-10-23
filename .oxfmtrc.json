@@ -6,5 +6,11 @@
   "tabWidth": 2,
   "trailingComma": "all",
   "sortPackageJson": false,
-  "ignorePatterns": ["dist", "node_modules", "src-tauri", "bun.lock"]
+  "ignorePatterns": [
+    "dist",
+    "node_modules",
+    "src-tauri",
+    "bun.lock",
+    "web/styles/palettes.css"
+  ]
 }

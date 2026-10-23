@@ -13,7 +13,7 @@ etapas está en [docs/roadmap.md](docs/roadmap.md).
 | ------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `web/`       | Cliente React 19 (raíz de Vite): `app/`, `features/`, `components/`, `lib/`, `styles/`, `i18n/`                                    |
 | `server/`    | Un proceso Bun: Elysia + GraphQL (Yoga + Pothos), `services/` (única vía de mutación), `domain/` (puro), `db/`, `mcp/` (Code Mode) |
-| `shared/`    | Tipos y esquemas compartidos entre `web/` y `server/`                                                                              |
+| `shared/`    | Código compartido entre `web/` y `server/` (orden fraccional)                                                                      |
 | `src-tauri/` | Shell de escritorio (Tauri 2); carga `dist/web`                                                                                    |
 | `scripts/`   | `check-scoped.ts` y herramientas del repo                                                                                          |
 | `deploy/`    | Script blue/green, unidad systemd y vhost de Nginx                                                                                 |
@@ -41,6 +41,10 @@ GITHUB_CLIENT_ID=...
 GITHUB_CLIENT_SECRET=...
 MYCHECKLIST_TOKEN_KEY=...   # openssl rand -base64 32
 ```
+
+Herramientas sueltas: `bun scripts/gen-palettes.ts` regenera los temas de `web/styles/palettes.css`;
+`bun scripts/dev-session.ts` imprime la cookie de una sesión de prueba para entrar en local sin GitHub (solo toca la
+base de desarrollo).
 
 ## Scripts
 
