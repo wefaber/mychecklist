@@ -5,7 +5,7 @@ import { openDb } from './db/connection'
 import { migrate } from './db/migrate'
 
 const path = process.env.MYCHECKLIST_DB ?? './data/mychecklist.db'
-const port = Number(process.env.MYCHECKLIST_PORT ?? 4151)
+const port = Number(process.env.MYCHECKLIST_PORT ?? 4161)
 const dev = process.env.NODE_ENV !== 'production'
 
 mkdirSync(dirname(path), { recursive: true })

@@ -10,8 +10,8 @@ contra `/graphql`; el desktop guarda una caché de lectura para verse sin conexi
 futuro).
 
 ```
-web/ (cliente) ──► Nginx ──► Bun :4151/4152 (público)   uso personal
-desktop (Tauri) ─┘      └──► Bun :4153/4154 (tailnet)  organizaciones   [M1]
+web/ (cliente) ──► Nginx ──► Bun :4161/4162 (público)   uso personal
+desktop (Tauri) ─┘      └──► Bun :4163/4164 (tailnet)  organizaciones   [M1]
                                  └─ services/ ─► db/ (SQLite WAL)
 GraphQL ┐
 Code Mode├─► services/*  (única vía de mutación → activity + SSE)
@@ -44,8 +44,8 @@ jobs     ┘
 
 | Qué          | Blue | Green |
 | ------------ | ---- | ----- |
-| Público      | 4151 | 4152  |
-| Tailnet (M1) | 4153 | 4154  |
+| Público      | 4161 | 4162  |
+| Tailnet (M1) | 4163 | 4164  |
 
 Dominio público: `checklist.wefaber.net`. Siempre escucha en loopback; Nginx es lo único que ve la red. Antes del
 primer deploy hay que confirmar que los puertos estén libres (`ss -ltnp`).

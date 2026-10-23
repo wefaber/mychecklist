@@ -12,7 +12,7 @@ BUN=/opt/bun/bun
 SYSTEMCTL="sudo -n /usr/bin/systemctl"
 NGINX="sudo -n /usr/sbin/nginx"
 DOMAIN="${MYCHECKLIST_DOMAIN:-checklist.wefaber.net}"
-declare -A PORT=([blue]=4151 [green]=4152)
+declare -A PORT=([blue]=4161 [green]=4162)   # 4151/4152 son de El Colectivo en este VPS
 
 log() { printf '[mychecklist %s] %s\n' "$(date -u +%H:%M:%S)" "$*"; }
 other() { [[ "$1" == blue ]] && echo green || echo blue; }
@@ -45,8 +45,8 @@ preflight() { # slot
   for p in "$BASE" "$DATA" "$STATE"; do [[ -d $p && -w $p ]] || miss+=("2. directory missing or not writable: $p"); done
   [[ -r $ENV_FILE ]] || miss+=("3. env file missing or unreadable: $ENV_FILE")
   [[ -f $UNIT ]] || miss+=("4. systemd unit not installed: $UNIT (then: sudo systemctl daemon-reload)")
-  [[ -f $SNIPPET ]] || miss+=("5. nginx snippet missing: $SNIPPET (initial: set \$mychecklist_port 4151; set \$mychecklist_root $BASE/blue/dist/web;)")
-  grep -rqs mychecklist-active.conf /etc/nginx/sites-enabled/ || miss+=("5. no enabled nginx vhost includes mychecklist-active.conf (deploy/nginx/mychecklist-next.conf)")
+  [[ -f $SNIPPET ]] || miss+=("5. nginx snippet missing: $SNIPPET (initial: set \$mychecklist_port ${PORT[blue]}; set \$mychecklist_root $BASE/blue/dist/web;)")
+  grep -rqs mychecklist-active.conf /etc/nginx/sites-enabled/ || miss+=("5. no enabled nginx vhost includes mychecklist-active.conf (deploy/nginx/mychecklist.conf)")
   local cmds=(
     "/usr/bin/systemctl start mychecklist@$slot" "/usr/bin/systemctl stop mychecklist@$slot"
     "/usr/bin/systemctl status mychecklist@$slot" "/usr/bin/systemctl reload nginx"
@@ -86,7 +86,7 @@ log "deploying $SHA into $IDLE (live is $ACTIVE)"
 $SYSTEMCTL stop "mychecklist@$IDLE" 2>/dev/null || true
 rm -rf "${BASE:?}/$IDLE"
 mkdir -p "$BASE/$IDLE"
-cp -r dist server shared package.json bun.lock tsconfig.json "$BASE/$IDLE/"
+cp -r dist server package.json bun.lock tsconfig.json "$BASE/$IDLE/"
 ( cd "$BASE/$IDLE" && $BUN install --frozen-lockfile --production )
 echo "$SHA" >"$BASE/$IDLE/REVISION"
 

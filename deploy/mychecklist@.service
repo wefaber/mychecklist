@@ -1,5 +1,6 @@
 # Install: sudo cp deploy/mychecklist@.service /etc/systemd/system/ && sudo systemctl daemon-reload
-# One instance per slot: mychecklist@blue (4151) and mychecklist@green (4152). Rootless-friendly: runs as hermes.
+# One instance per slot: mychecklist@blue (4161) and mychecklist@green (4162). Rootless-friendly: runs as hermes.
+# 4151/4152 are El Colectivo's on this VPS, don't reuse them.
 [Unit]
 Description=MyChecklist API (%i)
 After=network.target
@@ -11,7 +12,7 @@ WorkingDirectory=/home/hermes/mychecklist/%i
 EnvironmentFile=/home/hermes/deploy/env/mychecklist.env
 Environment=NODE_ENV=production
 Environment=MYCHECKLIST_DB=/home/hermes/data/mychecklist/mychecklist.db
-ExecStart=/bin/sh -c 'case "%i" in blue) P=4151;; green) P=4152;; esac; MYCHECKLIST_PORT=$P exec /opt/bun/bun server/index.ts'
+ExecStart=/bin/sh -c 'case "%i" in blue) P=4161;; green) P=4162;; esac; MYCHECKLIST_PORT=$P exec /opt/bun/bun server/index.ts'
 Restart=on-failure
 RestartSec=2
 NoNewPrivileges=true

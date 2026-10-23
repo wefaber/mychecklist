@@ -27,9 +27,9 @@ export default defineConfig({
     strictPort: true,
     allowedHosts: ['.ts.net'],
     proxy: {
-      '/graphql': 'http://127.0.0.1:4151',
-      '/health': 'http://127.0.0.1:4151',
-      '/ready': 'http://127.0.0.1:4151',
+      '/graphql': 'http://127.0.0.1:4161',
+      '/health': 'http://127.0.0.1:4161',
+      '/ready': 'http://127.0.0.1:4161',
     },
     watch: { ignored: ['**/src-tauri/**'] },
   },
