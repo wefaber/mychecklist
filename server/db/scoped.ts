@@ -55,6 +55,18 @@ export type SearchHit = {
   doneAt: number | null
 }
 
+/** Un item mencionado (o que menciona) por otro, con lo mínimo para dibujar un chip. */
+export type RefHit = SearchHit
+
+export type AttachmentRow = {
+  id: string
+  sha256: string
+  name: string
+  mime: string
+  size: number
+  createdAt: number
+}
+
 /** Hueco de orden entre dos vecinos: las claves de `position` que lo delimitan (`null` = extremo). */
 export type Gap = { before: string | null; after: string | null }
 
@@ -115,6 +127,34 @@ export type Scope = {
     ): Gap
     countInList(listId: string): number
     search(query: string, limit: number): SearchHit[]
+  }
+  /** Índice de referencias `[[id]]` entre items de la org (M3). Solo cuenta items vivos en listas vivas. */
+  refs: {
+    /** Reemplaza todas las referencias que salen de `fromId` por `toIds` (ya verificados por el servicio). */
+    replace(fromId: string, toIds: string[]): void
+    /** Items que menciona `fromId`. */
+    from(fromId: string): RefHit[]
+    /** Lo mismo para todos los items vivos de una lista, agrupado por el item que menciona. */
+    fromList(listId: string): Map<string, RefHit[]>
+    /** Items que mencionan a `toId` (backlinks), los modificados hace menos primero. */
+    to(toId: string, limit: number): RefHit[]
+  }
+  attachments: {
+    get(id: string): AttachmentRow | null
+    /** El adjunto de esta org con ese contenido, si ya se subió. */
+    bySha(sha256: string): AttachmentRow | null
+    insert(
+      row: {
+        id: string
+        sha256: string
+        name: string
+        mime: string
+        size: number
+      },
+      now: number,
+    ): void
+    /** Bytes que ocupan los adjuntos de la org (cuota). */
+    totalBytes(): number
   }
 }
 
@@ -191,6 +231,42 @@ const LIST_SELECT = `SELECT l.id, l.name, l.position, l.created_at, l.updated_at
 
 const ITEM_COLUMNS =
   'id, list_id, parent_id, position, text, done_at, created_at, updated_at, deleted_at'
+
+type HitSqlRow = {
+  id: string
+  list_id: string
+  list_name: string
+  text: string
+  done_at: number | null
+}
+
+const toHit = (r: HitSqlRow): RefHit => ({
+  id: r.id,
+  listId: r.list_id,
+  listName: r.list_name,
+  text: r.text,
+  doneAt: r.done_at,
+})
+
+type AttachmentSqlRow = {
+  id: string
+  sha256: string
+  name: string
+  mime: string
+  size: number
+  created_at: number
+}
+
+const toAttachment = (r: AttachmentSqlRow): AttachmentRow => ({
+  id: r.id,
+  sha256: r.sha256,
+  name: r.name,
+  mime: r.mime,
+  size: r.size,
+  createdAt: r.created_at,
+})
+
+const ATTACHMENT_COLUMNS = 'id, sha256, name, mime, size, created_at'
 
 /** `%` y `_` del texto buscado no son comodines. */
 const escapeLike = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`)
@@ -477,6 +553,103 @@ export function openScope(
             text: r.text,
             doneAt: r.done_at,
           }))
+      },
+    },
+    refs: {
+      replace(fromId, toIds) {
+        db.query('DELETE FROM item_refs WHERE org_id = ? AND from_id = ?').run(
+          orgId,
+          fromId,
+        )
+        for (const toId of toIds)
+          db.query(
+            'INSERT OR IGNORE INTO item_refs (org_id, from_id, to_id) VALUES (?, ?, ?)',
+          ).run(orgId, fromId, toId)
+      },
+      from(fromId) {
+        return db
+          .query<HitSqlRow, [string, string]>(
+            `SELECT i.id, i.list_id, l.name AS list_name, i.text, i.done_at
+             FROM item_refs r
+             JOIN items i ON i.id = r.to_id AND i.org_id = r.org_id
+             JOIN lists l ON l.id = i.list_id AND l.org_id = i.org_id
+             WHERE r.org_id = ? AND r.from_id = ? AND i.deleted_at IS NULL AND l.deleted_at IS NULL
+             ORDER BY i.id`,
+          )
+          .all(orgId, fromId)
+          .map(toHit)
+      },
+      fromList(listId) {
+        const out = new Map<string, RefHit[]>()
+        const rows = db
+          .query<HitSqlRow & { from_id: string }, [string, string]>(
+            `SELECT r.from_id, t.id, t.list_id, l.name AS list_name, t.text, t.done_at
+             FROM items s
+             JOIN item_refs r ON r.from_id = s.id AND r.org_id = s.org_id
+             JOIN items t ON t.id = r.to_id AND t.org_id = r.org_id
+             JOIN lists l ON l.id = t.list_id AND l.org_id = t.org_id
+             WHERE s.org_id = ? AND s.list_id = ? AND s.deleted_at IS NULL AND t.deleted_at IS NULL AND l.deleted_at IS NULL
+             ORDER BY r.from_id, t.id`,
+          )
+          .all(orgId, listId)
+        for (const row of rows) {
+          const hits = out.get(row.from_id)
+          if (hits) hits.push(toHit(row))
+          else out.set(row.from_id, [toHit(row)])
+        }
+        return out
+      },
+      to(toId, limit) {
+        return db
+          .query<HitSqlRow, [string, string, number]>(
+            `SELECT i.id, i.list_id, l.name AS list_name, i.text, i.done_at
+             FROM item_refs r
+             JOIN items i ON i.id = r.from_id AND i.org_id = r.org_id
+             JOIN lists l ON l.id = i.list_id AND l.org_id = i.org_id
+             WHERE r.org_id = ? AND r.to_id = ? AND i.deleted_at IS NULL AND l.deleted_at IS NULL
+             ORDER BY i.updated_at DESC, i.id LIMIT ?`,
+          )
+          .all(orgId, toId, limit)
+          .map(toHit)
+      },
+    },
+    attachments: {
+      get(id) {
+        const row = db
+          .query<AttachmentSqlRow, [string, string]>(
+            `SELECT ${ATTACHMENT_COLUMNS} FROM attachments WHERE org_id = ? AND id = ?`,
+          )
+          .get(orgId, id)
+        return row ? toAttachment(row) : null
+      },
+      bySha(sha256) {
+        const row = db
+          .query<AttachmentSqlRow, [string, string]>(
+            `SELECT ${ATTACHMENT_COLUMNS} FROM attachments WHERE org_id = ? AND sha256 = ?`,
+          )
+          .get(orgId, sha256)
+        return row ? toAttachment(row) : null
+      },
+      insert(row, now) {
+        db.query(
+          'INSERT INTO attachments (id, org_id, sha256, name, mime, size, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        ).run(
+          row.id,
+          orgId,
+          row.sha256,
+          row.name,
+          row.mime,
+          row.size,
+          userId,
+          now,
+        )
+      },
+      totalBytes() {
+        return db
+          .query<{ n: number }, [string]>(
+            'SELECT COALESCE(SUM(size), 0) AS n FROM attachments WHERE org_id = ?',
+          )
+          .get(orgId)!.n
       },
     },
   }

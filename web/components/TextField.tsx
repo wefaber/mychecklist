@@ -1,4 +1,4 @@
-import { Field } from '@wefaber/ui'
+import { Field, Textarea } from '@wefaber/ui'
 import type { ComponentProps, Ref } from 'react'
 
 type Props = ComponentProps<typeof Field> & { ref?: Ref<HTMLInputElement> }
@@ -8,3 +8,12 @@ type Props = ComponentProps<typeof Field> & { ref?: Ref<HTMLInputElement> }
  * no lo declara. Cuando el kit lo tipe, esto se reemplaza por `Field` directo.
  */
 export const TextField = Field as (props: Props) => ReturnType<typeof Field>
+
+type AreaProps = ComponentProps<typeof Textarea> & {
+  ref?: Ref<HTMLTextAreaElement>
+}
+
+/** Lo mismo para `Textarea`: reenvía `ref` al `<textarea>` pero su tipo no lo declara. */
+export const TextArea = Textarea as (
+  props: AreaProps,
+) => ReturnType<typeof Textarea>

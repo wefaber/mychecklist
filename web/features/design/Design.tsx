@@ -13,6 +13,8 @@ import {
   type Palette,
 } from '../../lib/theme'
 import type { Item, List } from '../lists/api'
+import { Markdown } from '../../lib/markdown'
+import type { Mention } from '../../lib/mentions'
 import { ItemRow, type RowActions } from '../lists/ItemRow'
 import { ThemeMenu } from '../theme/ThemeMenu'
 
@@ -34,12 +36,33 @@ const sample = (id: string, text: string, over: Partial<Item> = {}): Item => ({
   doneAt: null,
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
+  mentions: [],
   ...over,
 })
 
 const lists: List[] = [
   { id: 'sample', name: 'Compras', position: 'a', open: 2, total: 3 },
   { id: 'other', name: 'Casa', position: 'b', open: 0, total: 0 },
+]
+
+/** Ids de mentira con forma de ULID: el servidor real nunca los ve. */
+const REF_OPEN = '01JC8Q2V3N4M5P6R7S8T9VWXYZ'
+const REF_DONE = '01JC8Q2V3N4M5P6R7S8T9VWXY0'
+const mentions: Mention[] = [
+  {
+    id: REF_OPEN,
+    listId: 'sample',
+    listName: 'Compras',
+    title: 'Pedir el presupuesto',
+    done: false,
+  },
+  {
+    id: REF_DONE,
+    listId: 'sample',
+    listName: 'Compras',
+    title: 'Llamar al contador',
+    done: true,
+  },
 ]
 
 const noop = () => {}
@@ -150,6 +173,7 @@ export function Design() {
           <div className="flex flex-col gap-4">
             <ul className="flex flex-col gap-0.5">
               <ItemRow
+                orgId="design"
                 item={sample('1', t('design.sampleItem'))}
                 sub={false}
                 subCount={1}
@@ -160,6 +184,7 @@ export function Design() {
                 actions={actions}
               />
               <ItemRow
+                orgId="design"
                 item={sample('2', t('design.sampleSub'), { parentId: '1' })}
                 sub
                 subCount={0}
@@ -170,6 +195,7 @@ export function Design() {
                 actions={actions}
               />
               <ItemRow
+                orgId="design"
                 item={sample('3', t('design.sampleDone'), { done: true })}
                 sub={false}
                 subCount={0}
@@ -177,6 +203,37 @@ export function Design() {
                 lists={lists}
                 dragging={false}
                 drop="after"
+                actions={actions}
+              />
+            </ul>
+            <div className="rounded-card bg-surface-2 p-3 text-body">
+              <Markdown
+                text={t('design.sampleMarkdown', {
+                  open: REF_OPEN,
+                  done: REF_DONE,
+                })}
+                orgId="design"
+                mentions={mentions}
+                mode="full"
+                onOpenItem={noop}
+              />
+            </div>
+            <ul className="flex flex-col gap-0.5">
+              <ItemRow
+                orgId="design"
+                item={sample(
+                  '4',
+                  t('design.sampleMarkdownRow', { open: REF_OPEN }),
+                  {
+                    mentions,
+                  },
+                )}
+                sub={false}
+                subCount={0}
+                selected={false}
+                lists={lists}
+                dragging={false}
+                drop={null}
                 actions={actions}
               />
             </ul>

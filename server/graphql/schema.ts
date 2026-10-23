@@ -9,6 +9,8 @@ import { listOrgs } from '../services/accounts'
 import {
   createItem,
   deleteItem,
+  getItem,
+  listBacklinks,
   listItems,
   moveItem,
   restoreItem,
@@ -16,6 +18,7 @@ import {
   setItemDone,
   updateItemText,
   type ItemView,
+  type Mention,
 } from '../services/items'
 import {
   createList,
@@ -49,7 +52,7 @@ function caller(ctx: Context): Caller {
 const iso = (ms: number | null) =>
   ms === null ? null : new Date(ms).toISOString()
 
-/** Code-first schema. M1: identidad y organizaciones. M2: listas e items. */
+/** Code-first schema. M1: identidad y organizaciones. M2: listas e items. M3: menciones y backlinks entre items. */
 export function buildSchema() {
   const builder = new SchemaBuilder<{ Context: Context }>({})
 
@@ -72,6 +75,19 @@ export function buildSchema() {
     }),
   })
 
+  const MentionRef = builder.objectRef<Mention>('Mention')
+  MentionRef.implement({
+    description:
+      'Un item enlazado con `[[id]]`, con lo mínimo para dibujar un chip.',
+    fields: (t) => ({
+      id: t.exposeID('id'),
+      listId: t.exposeID('listId'),
+      listName: t.exposeString('listName'),
+      title: t.exposeString('title'),
+      done: t.exposeBoolean('done'),
+    }),
+  })
+
   const ItemRef = builder.objectRef<ItemView>('Item')
   ItemRef.implement({
     fields: (t) => ({
@@ -84,6 +100,17 @@ export function buildSchema() {
       doneAt: t.string({ nullable: true, resolve: (i) => iso(i.doneAt) }),
       createdAt: t.string({ resolve: (i) => iso(i.createdAt)! }),
       updatedAt: t.string({ resolve: (i) => iso(i.updatedAt)! }),
+      mentions: t.field({
+        type: [MentionRef],
+        description: 'Items vivos que este texto enlaza con `[[id]]`.',
+        resolve: (i) => i.mentions,
+      }),
+      backlinks: t.field({
+        type: [MentionRef],
+        description: 'Items vivos cuyo texto enlaza a este.',
+        resolve: (i, _a, ctx) =>
+          listBacklinks({ db: ctx.db }, caller(ctx), i.orgId, i.id),
+      }),
     }),
   })
 
@@ -137,6 +164,13 @@ export function buildSchema() {
         args: { id: t.arg.id({ required: true }) },
         resolve: (o, args, ctx) =>
           getList({ db: ctx.db }, caller(ctx), o.id, String(args.id)),
+      }),
+      item: t.field({
+        type: ItemRef,
+        nullable: true,
+        args: { id: t.arg.id({ required: true }) },
+        resolve: (o, args, ctx) =>
+          getItem({ db: ctx.db }, caller(ctx), o.id, String(args.id)),
       }),
       search: t.field({
         type: [SearchHitRef],

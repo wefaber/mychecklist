@@ -8,11 +8,18 @@ import type { GithubClient } from './auth/github'
 import { loadConfig, type Config } from './config'
 import { migrationsApplied } from './db/migrate'
 import { findSessionUser } from './db/sessions'
-import { DomainError } from './errors'
+import { DomainError, type ErrorCode } from './errors'
+import { fileStore, readCapped, type FileStore } from './files'
 import { createBus, type Bus } from './events'
 import type { Ingress } from './ingress'
 import { maxDepth } from './graphql/limits'
 import { buildSchema, type Context } from './graphql/schema'
+import {
+  GENERIC_MIME,
+  MAX_ATTACHMENT_BYTES,
+  openAttachment,
+  uploadAttachment,
+} from './services/attachments'
 import { getOrg } from './services/orgs'
 
 const MAX_DEPTH = 8
@@ -42,6 +49,8 @@ type AppOptions = {
   github?: GithubClient | null
   /** Bus de cambios compartido por los dos listeners del proceso (SSE). */
   bus?: Bus
+  /** Almacén de adjuntos; por defecto `config.filesDir`. */
+  files?: FileStore
   dev?: boolean
   logging?: boolean
   now?: () => number
@@ -67,6 +76,7 @@ export function createApp(db: Database, opts: AppOptions = {}) {
   const config = opts.config ?? loadConfig()
   const now = opts.now ?? Date.now
   const bus = opts.bus ?? createBus()
+  const files = opts.files ?? fileStore(config.filesDir)
   const secure = config.origins[ingress].startsWith('https:')
   const viewerOf = (request: Request) => {
     const token = parseCookies(request.headers.get('cookie'))[
@@ -126,6 +136,62 @@ export function createApp(db: Database, opts: AppOptions = {}) {
       }
       return eventStream(bus, orgId, request.signal)
     })
+    .post(
+      '/files/:org',
+      async ({ request, params }) => {
+        if (!originOk(request))
+          return fileError('FORBIDDEN', 'Origen no permitido')
+        const viewer = viewerOf(request)
+        if (!viewer)
+          return fileError('UNAUTHENTICATED', 'Hay que iniciar sesión')
+        try {
+          const bytes = await readCapped(request, MAX_ATTACHMENT_BYTES)
+          const name = decodeName(request.headers.get('x-file-name'))
+          const attachment = await uploadAttachment(
+            { db, files },
+            { userId: viewer.id, ingress, via: 'web' },
+            { orgId: params.org, name, bytes },
+            now(),
+          )
+          return Response.json({ attachment }, { status: 201 })
+        } catch (error) {
+          return fileFailure(error)
+        }
+      },
+      { parse: 'none' },
+    )
+    .get('/files/:org/:id', ({ request, params }) => {
+      const viewer = viewerOf(request)
+      if (!viewer) return fileError('UNAUTHENTICATED', 'Hay que iniciar sesión')
+      try {
+        const { attachment, sha256, path } = openAttachment(
+          { db, files },
+          { userId: viewer.id, ingress },
+          params.org,
+          params.id,
+        )
+        // El contenido no cambia nunca para un id: el ETag es su hash.
+        const etag = `"${sha256}"`
+        const headers: Record<string, string> = {
+          etag,
+          'cache-control': 'private, max-age=31536000, immutable',
+          'x-content-type-options': 'nosniff',
+          'content-security-policy': "default-src 'none'; sandbox",
+        }
+        if (request.headers.get('if-none-match') === etag)
+          return new Response(null, { status: 304, headers })
+        return new Response(Bun.file(path), {
+          headers: {
+            ...headers,
+            // Solo las imágenes reconocidas por su contenido se ven en línea; lo demás se descarga.
+            'content-type': attachment.image ? attachment.mime : GENERIC_MIME,
+            'content-disposition': `${attachment.image ? 'inline' : 'attachment'}; ${dispositionName(attachment.name)}`,
+          },
+        })
+      } catch (error) {
+        return fileFailure(error)
+      }
+    })
     .all(
       '/graphql',
       ({ request }) =>
@@ -148,6 +214,43 @@ export function createApp(db: Database, opts: AppOptions = {}) {
 
 const eventsError = (code: string, status: number) =>
   Response.json({ error: { code } }, { status })
+
+const STATUS: Record<ErrorCode, number> = {
+  UNAUTHENTICATED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  AUTH_NOT_CONFIGURED: 503,
+  INVALID_INPUT: 400,
+  LIMIT_REACHED: 413,
+}
+
+const fileError = (code: ErrorCode, message: string) =>
+  Response.json({ error: { code, message } }, { status: STATUS[code] })
+
+/** Los fallos del dominio salen con su código y estado; cualquier otra cosa es un error del servidor. */
+function fileFailure(error: unknown): Response {
+  if (error instanceof DomainError) return fileError(error.code, error.message)
+  throw error
+}
+
+/** El nombre llega codificado en `X-File-Name` (los headers no admiten cualquier carácter). */
+function decodeName(raw: string | null): string {
+  try {
+    return raw ? decodeURIComponent(raw) : ''
+  } catch {
+    return ''
+  }
+}
+
+/** `filename*` (RFC 5987) lleva el nombre real; `filename` es una versión ASCII para clientes viejos. */
+function dispositionName(name: string): string {
+  const ascii = name.replace(/[^\x20-\x7e]|["\\]/g, '_')
+  const encoded = encodeURIComponent(name).replace(
+    /['()*]/g,
+    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+  )
+  return `filename="${ascii}"; filename*=UTF-8''${encoded}`
+}
 
 const HEARTBEAT_MS = 25_000
 
