@@ -1,0 +1,16 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+@import '@wefaber/tokens/themes/forest.css';
+@import '@wefaber/tokens/theme.css';
+
+@source '../../node_modules/@wefaber/ui/src';
+
+/* Forest declara el modo claro con `:root[data-theme="light"]`; el oscuro es el valor base. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+}

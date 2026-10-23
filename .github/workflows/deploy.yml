@@ -1,0 +1,31 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-mychecklist
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Put bun on PATH (package scripts call plain `bun`)
+        run: echo /opt/bun >> "$GITHUB_PATH"
+
+      - name: Install
+        run: /opt/bun/bun install --frozen-lockfile
+
+      - name: Check (tsc, oxlint, tests)
+        run: /opt/bun/bun run check
+
+      - name: Build
+        run: /opt/bun/bun run build
+
+      - name: Blue/green deploy
+        run: bash deploy/mychecklist.sh "${{ github.sha }}"
