@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { findViolations } from './check-scoped'
+import { findViolations, walk } from './check-scoped'
 
 const owned = /\b(items|lists)\b/
 
@@ -56,5 +56,11 @@ describe('check-scoped', () => {
       owned,
     )
     expect(v).toEqual([])
+  })
+})
+
+describe('walk', () => {
+  test('una carpeta que no existe no rompe el chequeo', () => {
+    expect(walk('/no/existe/mychecklist')).toEqual([])
   })
 })

@@ -5,7 +5,7 @@
  *  3. In scoped.ts every statement on those tables mentions org_id.
  * Heuristic on purpose: it reads source text, so a violation is a loud failure, not a subtle runtime bug.
  */
-import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 
 const SQL =
@@ -62,7 +62,9 @@ export function findViolations(
   return out
 }
 
-function walk(dir: string, acc: string[] = []): string[] {
+/** Git does not track empty folders, so a source root like `shared/` may not exist in a fresh checkout. */
+export function walk(dir: string, acc: string[] = []): string[] {
+  if (!existsSync(dir)) return acc
   for (const name of readdirSync(dir)) {
     if (name === 'node_modules' || name === 'dist') continue
     const full = join(dir, name)
