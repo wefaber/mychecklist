@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useState, type DragEvent, type KeyboardEvent } from 'react'
 import { t } from '../../i18n'
+import { Markdown } from '../../lib/markdown'
 import type { Item, List } from './api'
 
 export type RowActions = {
@@ -34,6 +35,7 @@ export type RowActions = {
 
 /** Una fila: casilla, texto (abre el detalle), subitems indentados y un menú con todo lo que se puede hacer. */
 export function ItemRow({
+  orgId,
   item,
   sub,
   subCount,
@@ -43,6 +45,7 @@ export function ItemRow({
   drop,
   actions: a,
 }: {
+  orgId: string
   item: Item
   sub: boolean
   subCount: number
@@ -115,9 +118,14 @@ export function ItemRow({
         className="min-w-0 flex-1 rounded-control px-1 py-1.5 text-left text-body-lg"
       >
         <span
-          className={`block whitespace-pre-wrap break-words ${item.done ? 'text-muted line-through' : 'text-text'}`}
+          className={`block ${item.done ? 'text-muted line-through' : 'text-text'}`}
         >
-          {item.text}
+          <Markdown
+            text={item.text}
+            orgId={orgId}
+            mentions={item.mentions}
+            mode="row"
+          />
         </span>
         {subCount > 0 ? (
           <span className="mt-0.5 flex items-center gap-1 text-meta text-muted tabular-nums">

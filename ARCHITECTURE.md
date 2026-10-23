@@ -35,7 +35,7 @@ jobs     ┘
 | `/health`, `/ready`, `/graphql` (solo `version`), migraciones, `check-scoped`, spike de QuickJS | M0 (hecho) |
 | Auth, sesiones, org personal, dos listeners, `scoped.ts`                                        | M1 (hecho) |
 | Listas e items, orden fraccional, deshacer, SSE, temas                                          | M2 (hecho) |
-| Markdown, backlinks, adjuntos                                                                   | M3         |
+| Markdown, backlinks, adjuntos                                                                   | M3 (hecho) |
 | Links a GitHub                                                                                  | M4         |
 | Code Mode completo (`/codemode/*`, `/mcp`)                                                      | M5         |
 | Import/Export, orgs de equipo, desktop completo, Ether                                          | M6–M9      |
@@ -69,6 +69,21 @@ jobs     ┘
   usan la cookie de sesión y `SameSite=Lax` no alcanza contra un subdominio ajeno.
 - **Límites:** 200 listas por org, 5000 items por lista, 80 caracteres por nombre y 4000 por item.
 
+## Markdown, referencias y adjuntos (M3)
+
+- **Referencias:** `[[<id>]]` en el texto; `shared/refs.ts` las extrae (servidor) y las dibuja (cliente) con el mismo
+  recorrido del Markdown (ADR 0005). `item_refs` es solo un índice que `services/items.ts` reescribe en la misma
+  transacción que el texto. GraphQL: `Item.mentions` (viene con la lista, en una consulta), `Item.backlinks` (solo si
+  se pide) y `Org.item(id)`.
+- **Adjuntos:** `POST /files/:org` (cuerpo crudo, nombre en `X-File-Name`, hasta 10 MB) y `GET /files/:org/:id`. Pasan por
+  `services/attachments.ts` y `scoped.ts` como todo lo demás; el contenido va a `files/<aa>/<sha256>` (`server/files.ts`,
+  carpeta `MYCHECKLIST_FILES`, por defecto al lado de la base) con escritura atómica. Se sirve con `nosniff`, CSP
+  `sandbox` y solo PNG, JPEG, GIF y WebP en línea; lo demás se descarga.
+- **Cliente:** `web/lib/markdown.tsx` (`row` dentro de un botón, inerte; `full` en el detalle). El detalle suma
+  pegar, soltar y adjuntar archivos, el selector `[[` y la lista de backlinks.
+- **Límites:** 10 MB por archivo, 500 MB por org, 50 referencias distintas por item, 100 backlinks por item.
+- **Nginx:** `location /files/` con `client_max_body_size 10m` en los dos vhosts.
+
 ## Red y puertos
 
 | Qué     | Blue | Green |
@@ -82,4 +97,4 @@ primer deploy hay que confirmar que los puertos estén libres (`ss -ltnp`).
 ## Datos
 
 SQLite en `/home/hermes/data/mychecklist/` (WAL, `foreign_keys=ON`, `busy_timeout`). Archivos adjuntos en
-`files/<aa>/<sha256>` de la misma carpeta. Backups cada hora con `VACUUM INTO`, fuera del host.
+`files/<aa>/<sha256>` de la misma carpeta (se cargan por `/files`, ver M3). Backups cada hora con `VACUUM INTO`, fuera del host.

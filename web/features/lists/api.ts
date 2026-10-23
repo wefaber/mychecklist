@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { gql } from '../../lib/graphql'
+import type { Mention } from '../../lib/mentions'
 import { apiUrl } from '../../lib/server'
 
 export type List = {
@@ -21,6 +22,8 @@ export type Item = {
   doneAt: string | null
   createdAt: string
   updatedAt: string
+  /** Items vivos que el texto enlaza con `[[id]]`. */
+  mentions: Mention[]
 }
 
 export type Hit = {
@@ -32,12 +35,15 @@ export type Hit = {
 }
 
 const LIST = 'id name position open total'
-const ITEM = 'id listId parentId position text done doneAt createdAt updatedAt'
+export const MENTION = 'id listId listName title done'
+const ITEM = `id listId parentId position text done doneAt createdAt updatedAt mentions { ${MENTION} }`
 
 export const keys = {
   lists: (orgId: string) => ['lists', orgId] as const,
   items: (orgId: string, listId: string) => ['items', orgId, listId] as const,
   search: (orgId: string, q: string) => ['search', orgId, q] as const,
+  backlinks: (orgId: string, itemId: string) =>
+    ['backlinks', orgId, itemId] as const,
 }
 
 export function useLists(orgId: string | null) {
@@ -65,6 +71,21 @@ export function useItems(orgId: string | null, listId: string | null) {
           { o: orgId, l: listId },
         )
       ).org.list.items,
+  })
+}
+
+/** Items que mencionan a `itemId`; se vuelve a pedir cuando cambia cualquier cosa de la org. */
+export function useBacklinks(orgId: string | null, itemId: string | null) {
+  return useQuery({
+    queryKey: keys.backlinks(orgId ?? '', itemId ?? ''),
+    enabled: orgId !== null && itemId !== null,
+    queryFn: async () =>
+      (
+        await gql<{ org: { item: { backlinks: Mention[] } | null } }>(
+          `query($o: ID!, $i: ID!) { org(id: $o) { item(id: $i) { backlinks { ${MENTION} } } } }`,
+          { o: orgId, i: itemId },
+        )
+      ).org.item?.backlinks ?? [],
   })
 }
 
@@ -102,6 +123,7 @@ export function useOrgEvents(orgId: string | null) {
     const refreshAll = () => {
       void client.invalidateQueries({ queryKey: ['lists', orgId] })
       void client.invalidateQueries({ queryKey: ['items', orgId] })
+      void client.invalidateQueries({ queryKey: ['backlinks', orgId] })
     }
     source.addEventListener('change', (e) => {
       const data = JSON.parse((e as MessageEvent<string>).data) as {
@@ -110,12 +132,12 @@ export function useOrgEvents(orgId: string | null) {
       }
       if (data.scope === 'lists')
         void client.invalidateQueries({ queryKey: ['lists', orgId] })
-      else
-        void client.invalidateQueries({
-          queryKey: data.listId
-            ? keys.items(orgId, data.listId)
-            : ['items', orgId],
-        })
+      else {
+        // Un cambio en una lista puede mover el título de un chip o un backlink en cualquier otra: se pide todo lo que
+        // esté en pantalla (las listas que no se ven quedan viejas y se piden al abrirlas).
+        void client.invalidateQueries({ queryKey: ['items', orgId] })
+        void client.invalidateQueries({ queryKey: ['backlinks', orgId] })
+      }
     })
     source.addEventListener('open', refreshAll)
     return () => source.close()

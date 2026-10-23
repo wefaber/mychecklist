@@ -1,4 +1,7 @@
 import type { Database } from 'bun:sqlite'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { createApp } from './app'
 import { sessionCookieName } from './auth/cookies'
 import type { GithubClient, GithubProfile } from './auth/github'
@@ -18,6 +21,7 @@ export const config: Config = {
     tailnet: 'https://checklist.tailnet.test',
   },
   tokenKey: TOKEN_KEY,
+  filesDir: mkdtempSync(join(tmpdir(), 'mychecklist-files-')),
   github: { clientId: 'cid', clientSecret: 'secret' },
 }
 

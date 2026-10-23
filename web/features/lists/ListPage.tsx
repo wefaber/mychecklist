@@ -326,6 +326,7 @@ export function ListPage({
                 [n.item, ...n.children].map((i) => (
                   <ItemRow
                     key={i.id}
+                    orgId={orgId}
                     item={i}
                     sub={i.parentId !== null}
                     subCount={
@@ -367,6 +368,7 @@ export function ListPage({
       </Tile>
 
       <ItemDock
+        orgId={orgId}
         item={selected}
         items={all}
         lists={lists.data ?? []}
