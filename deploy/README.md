@@ -3,13 +3,13 @@
 Push a `main` → `.github/workflows/deploy.yml` en el runner self-hosted de `wefaber` → `bun install --frozen-lockfile`,
 `bun run check`, `bun run build`, `deploy/mychecklist.sh <sha>`.
 
-`mychecklist.sh` es blue/green. El slot ocioso (`/home/hermes/mychecklist/{blue,green}`, puertos 4151/4152) recibe el
+`mychecklist.sh` es blue/green. El slot ocioso (`/home/hermes/mychecklist/{blue,green}`, puertos 4161/4162) recibe el
 release, arranca como `mychecklist@<slot>` y tiene que responder `/ready`; después Nginx apunta a él por
 `/etc/nginx/snippets/mychecklist-active.conf` y el **dominio público** tiene que responder `/ready` y `/`. Si el dominio
 falla, el script vuelve solo al slot anterior. El slot anterior sigue corriendo: `deploy/mychecklist.sh --rollback`
 vuelve sin recompilar.
 
-Cada slot levanta dos listeners en loopback (ADR 0001): público 4151/4152 y tailnet 4153/4154. El script exige que
+Cada slot levanta dos listeners en loopback (ADR 0001): público 4161/4162 y tailnet 4163/4164. El script exige que
 `/ready` responda en los dos antes de cambiar de slot.
 
 ## Instalación única en el VPS (todavía no hecha)
@@ -18,7 +18,8 @@ Cada slot levanta dos listeners en loopback (ADR 0001): público 4151/4152 y tai
 números coinciden) y sale con 1, así un primer deploy en un VPS sin preparar falla con la lista y no con un error de
 systemd.
 
-1. Puertos libres: `ss -ltn | grep -E ':415[1-4]'` (4151-4154: dos por slot).
+1. Puertos libres: `ss -ltn | grep -E ':416[1-4]'` (4161-4164: dos por slot: blue público/tailnet y green
+   público/tailnet). Los 4151-4154 están tomados por El Colectivo en este VPS: no reusar.
 2. `mkdir -p /home/hermes/mychecklist /home/hermes/data/mychecklist /home/hermes/deploy/state/mychecklist`
 3. `~/deploy/env/mychecklist.env` (los secretos viven acá, nunca en el repo). Variables:
 
@@ -34,8 +35,8 @@ systemd.
 
 4. `sudo cp deploy/mychecklist@.service /etc/systemd/system/ && sudo systemctl daemon-reload`
 5. Nginx: `deploy/nginx/mychecklist.conf` en `sites-available` + symlink, DNS de `checklist.wefaber.net`, TLS como los
-   otros vhosts y un `snippets/mychecklist-active.conf` inicial (`set $mychecklist_port 4151;`,
-   `set $mychecklist_tailnet_port 4153;` y `set $mychecklist_root /home/hermes/mychecklist/blue/dist/web;`).
+   otros vhosts y un `snippets/mychecklist-active.conf` inicial (`set $mychecklist_port 4161;`,
+   `set $mychecklist_tailnet_port 4163;` y `set $mychecklist_root /home/hermes/mychecklist/blue/dist/web;`).
    El vhost de la tailnet es `deploy/nginx/mychecklist-tailnet.conf`: es una plantilla, hay que completar la IP de
    Tailscale y el nombre antes de instalarla.
 6. sudoers del usuario del runner, sin contraseña y limitado a: `systemctl start|stop|status|reload` sobre
