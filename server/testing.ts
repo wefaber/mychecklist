@@ -5,6 +5,7 @@ import type { GithubClient, GithubProfile } from './auth/github'
 import { loadConfig, type Config } from './config'
 import { openDb } from './db/connection'
 import { migrate } from './db/migrate'
+import { createBus } from './events'
 import type { Ingress } from './ingress'
 import { signIn } from './services/accounts'
 
@@ -54,6 +55,7 @@ export const bob: GithubProfile = {
 export type Gql = (
   query: string,
   cookie?: string,
+  variables?: Record<string, unknown>,
 ) => Promise<{
   data?: Record<string, any> | null
   errors?: { message: string; extensions?: { code?: string } }[]
@@ -63,23 +65,26 @@ export type Gql = (
 export function setupServer(github: GithubClient | null = null) {
   const db: Database = openDb(':memory:')
   migrate(db)
+  const bus = createBus()
   const apps = {
     public: createApp(db, {
       ingress: 'public',
       config,
       github,
+      bus,
       logging: false,
     }),
     tailnet: createApp(db, {
       ingress: 'tailnet',
       config,
       github,
+      bus,
       logging: false,
     }),
   }
   const gqlOn =
     (ingress: Ingress): Gql =>
-    async (query, cookie) => {
+    async (query, cookie, variables) => {
       const res = await apps[ingress].handle(
         new Request('https://checklist.test/graphql', {
           method: 'POST',
@@ -87,13 +92,14 @@ export function setupServer(github: GithubClient | null = null) {
             'content-type': 'application/json',
             ...(cookie ? { cookie } : {}),
           },
-          body: JSON.stringify({ query }),
+          body: JSON.stringify({ query, variables }),
         }),
       )
       return res.json() as ReturnType<Gql>
     }
   return {
     db,
+    bus,
     apps,
     gql: { public: gqlOn('public'), tailnet: gqlOn('tailnet') },
   }
