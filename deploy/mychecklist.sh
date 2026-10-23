@@ -48,7 +48,7 @@ preflight() { # slot
   [[ -r $ENV_FILE ]] || miss+=("3. env file missing or unreadable: $ENV_FILE")
   [[ -f $UNIT ]] || miss+=("4. systemd unit not installed: $UNIT (then: sudo systemctl daemon-reload)")
   [[ -f $SNIPPET ]] || miss+=("5. nginx snippet missing: $SNIPPET (initial: set \$mychecklist_port 4161; set \$mychecklist_tailnet_port 4163; set \$mychecklist_root $BASE/blue/dist/web;)")
-  grep -rqs mychecklist-active.conf /etc/nginx/sites-enabled/ || miss+=("5. no enabled nginx vhost includes mychecklist-active.conf (deploy/nginx/mychecklist.conf)")
+  grep -Rqs mychecklist-active.conf /etc/nginx/sites-enabled/ || miss+=("5. no enabled nginx vhost includes mychecklist-active.conf (deploy/nginx/mychecklist.conf)")
   local cmds=(
     "/usr/bin/systemctl start mychecklist@$slot" "/usr/bin/systemctl stop mychecklist@$slot"
     "/usr/bin/systemctl status mychecklist@$slot" "/usr/bin/systemctl reload nginx"
@@ -91,7 +91,8 @@ log "deploying $SHA into $IDLE (live is $ACTIVE)"
 $SYSTEMCTL stop "mychecklist@$IDLE" 2>/dev/null || true
 rm -rf "${BASE:?}/$IDLE"
 mkdir -p "$BASE/$IDLE"
-cp -r dist server shared package.json bun.lock tsconfig.json "$BASE/$IDLE/"
+cp -r dist server package.json bun.lock tsconfig.json "$BASE/$IDLE/"
+[[ -d shared ]] && cp -r shared "$BASE/$IDLE/"    # el alias @shared/* existe en tsconfig, pero la carpeta puede no existir
 ( cd "$BASE/$IDLE" && $BUN install --frozen-lockfile --production )
 echo "$SHA" >"$BASE/$IDLE/REVISION"
 
