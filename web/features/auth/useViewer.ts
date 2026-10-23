@@ -6,11 +6,13 @@ export type Viewer = {
   login: string
   name: string | null
   avatarUrl: string | null
+  orgs: { id: string; kind: 'personal' | 'team'; name: string }[]
 }
 
 type MeResult = { loginAvailable: boolean; me: Viewer | null }
 
-const ME = '{ loginAvailable me { login name avatarUrl } }'
+const ME =
+  '{ loginAvailable me { login name avatarUrl orgs { id kind name } } }'
 
 /** Quién está mirando: la sesión de la cookie, y si este servidor puede iniciar sesión. */
 export function useViewer() {
@@ -29,6 +31,8 @@ export function useViewer() {
     loading: query.isPending,
     failed: query.isError,
     viewer: query.data?.me ?? null,
+    /** La org personal: donde viven las listas hasta que lleguen las orgs de equipo (M7). */
+    orgId: query.data?.me?.orgs.find((o) => o.kind === 'personal')?.id ?? null,
     loginAvailable: query.data?.loginAvailable ?? false,
     signOut: () => signOut.mutate(),
     signingOut: signOut.isPending,

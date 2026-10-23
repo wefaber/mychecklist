@@ -34,7 +34,7 @@ jobs     ┘
 | ----------------------------------------------------------------------------------------------- | ---------- |
 | `/health`, `/ready`, `/graphql` (solo `version`), migraciones, `check-scoped`, spike de QuickJS | M0 (hecho) |
 | Auth, sesiones, org personal, dos listeners, `scoped.ts`                                        | M1 (hecho) |
-| Listas e items, SSE                                                                             | M2         |
+| Listas e items, orden fraccional, deshacer, SSE, temas                                          | M2 (hecho) |
 | Markdown, backlinks, adjuntos                                                                   | M3         |
 | Links a GitHub                                                                                  | M4         |
 | Code Mode completo (`/codemode/*`, `/mcp`)                                                      | M5         |
@@ -51,10 +51,23 @@ jobs     ┘
 - **Orgs:** cada usuario tiene una org `personal` (owner). `team` llega con M7. El listener público no lista ni abre
   orgs `team`.
 - **Acceso a datos:** `openScope(db, { orgId, userId, ingress })` en `server/db/scoped.ts` es la única puerta a las
-  tablas con `org_id` (hoy `activity`). Verifica org, membresía e ingress y devuelve `FORBIDDEN` en todos los casos.
+  tablas con `org_id` (`activity`, `lists`, `items`). Verifica org, membresía e ingress y devuelve `FORBIDDEN` en todos los casos.
   Los servicios (`server/services/*`) arman el `Caller` y GraphQL solo llama a servicios.
 - **Errores:** `DomainError(code)` en el dominio; GraphQL lo expone como `extensions.code` (`UNAUTHENTICATED`,
   `FORBIDDEN`, ...).
+
+## Listas e items (M2)
+
+- **Datos:** `lists` e `items` (con `org_id`, solo vía `scoped.ts`). Un nivel de subitems; orden fraccional y borrado
+  lógico (ADR 0004). Los items y las listas se leen y mutan por `server/services/{lists,items}.ts`; GraphQL solo arma
+  el `Caller` y los llama.
+- **Avisos en vivo (SSE):** `GET /events?org=` exige sesión de esa puerta y membresía. Cada mutación publica un
+  evento en un bus en memoria (`server/events.ts`, compartido por los dos listeners) sin datos del contenido: el
+  cliente invalida y vuelve a pedir por GraphQL. Hay un ping cada 25 s; Nginx lo sirve sin buffer. Con más de un
+  proceso por slot el bus no cruza procesos (hoy hay uno).
+- **Origen:** un `POST /graphql` con un `Origin` que no sea una de las dos URLs configuradas da 403. Las mutaciones
+  usan la cookie de sesión y `SameSite=Lax` no alcanza contra un subdominio ajeno.
+- **Límites:** 200 listas por org, 5000 items por lista, 80 caracteres por nombre y 4000 por item.
 
 ## Red y puertos
 

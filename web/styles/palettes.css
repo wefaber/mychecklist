@@ -1,0 +1,200 @@
+/* Generado por scripts/gen-palettes.ts desde @wefaber/tokens: no se edita a mano. */
+
+/* forest */
+:root:not([data-palette]),
+:root[data-palette="forest"] {
+  --bg: oklch(0.245 0.055 146);
+  --surface: oklch(0.285 0.05 146);
+  --surface-2: oklch(0.33 0.048 146);
+  --surface-3: oklch(0.37 0.046 146);
+  --border: oklch(0.4 0.04 146);
+  --text: oklch(0.965 0.012 130);
+  --text-muted: oklch(0.8 0.035 135);
+  --accent: oklch(0.78 0.165 128);
+  --on-accent: var(--bg);
+  --danger: oklch(0.8 0.14 28);
+  --warning: oklch(0.85 0.14 85);
+  --success: oklch(0.8 0.13 170);
+  --review: oklch(0.76 0.12 300);
+
+  --orb: oklch(0.769 0.178 129);
+  --orb-ring: oklch(0.847 0.194 117);
+  --orb-flow: oklch(0.83 0.13 182);
+  --orb-alert: oklch(0.84 0.15 78);
+  --orb-error: oklch(0.72 0.17 28);
+  --orb-off: oklch(0.6 0.02 140);
+  --orb-plate: var(--surface-2);
+  --orb-auto-plate: transparent;
+
+  --elev-float: 0 12px 32px oklch(0.12 0.04 146 / 0.45), 0 2px 6px oklch(0.12 0.04 146 / 0.3);
+  --tile-edge: transparent;
+
+  --r-control: 8px;
+  --r-card: 12px;
+  --r-panel: 16px;
+  --r-tile: 24px;
+
+  --font-ui: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-code: "Geist Mono Variable", ui-monospace, monospace;
+  --font-heading: "Archivo Variable", "Geist Variable", ui-sans-serif, sans-serif;
+
+  color-scheme: dark;
+}
+
+:root[data-palette="forest"][data-theme="light"] {
+  --bg: oklch(0.955 0.014 135);
+  --surface: oklch(0.995 0.004 135);
+  --surface-2: oklch(0.965 0.012 135);
+  --surface-3: oklch(0.93 0.016 135);
+  --border: oklch(0.89 0.018 140);
+  --text: oklch(0.25 0.05 146);
+  --text-muted: oklch(0.45 0.04 146);
+  --accent: oklch(0.5 0.13 138);
+  --on-accent: oklch(0.995 0.004 135);
+  --danger: oklch(0.53 0.19 28);
+  --warning: oklch(0.56 0.12 70);
+  --success: oklch(0.5 0.11 170);
+  --review: oklch(0.52 0.15 300);
+
+  --orb-plate: oklch(0.245 0.055 146);
+  --orb-auto-plate: oklch(0.245 0.055 146);
+
+  --elev-float: 0 12px 32px oklch(0.25 0.05 146 / 0.14), 0 2px 6px oklch(0.25 0.05 146 / 0.1);
+  --tile-edge: var(--border);
+
+  color-scheme: light;
+}
+
+/* azul */
+:root[data-palette="azul"] {
+  --bg: #e3f2fd; --surface: #ffffff;
+  --surface-2: #e3f2fd; --surface-3: #bbdefb; --border: rgb(13 71 161 / 0.1); --text: #0d47a1; --text-muted: #3d6cb4; --accent: #1976d2; --on-accent: #ffffff;
+  --danger: #c62828;
+  --warning: #9a5b00;
+  --success: #2e7d32;
+  --review: #6a1b9a;
+
+  --orb: #2196f3;
+  --orb-ring: #64b5f6;
+  --orb-flow: #90caf9;
+  --orb-alert: #f9a825;
+  --orb-error: #e53935;
+  --orb-off: #9aa6b4;
+  --orb-plate: var(--surface-2);
+  --orb-auto-plate: transparent;
+
+  --elev-float: 0 8px 30px rgb(13 71 161 / 0.28); --tile-edge: transparent;
+
+  --r-control: 12px; --r-card: 16px; --r-panel: 16px;
+  --r-tile: 16px;
+
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --font-code: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+  --font-heading: var(--font-ui);
+
+  color-scheme: light;
+}
+
+:root[data-palette="azul"][data-theme="dark"] {
+  --bg: #0a1220;
+  --surface: #111c2e;
+  --surface-2: #17243a; --surface-3: #1a4470; --border: rgb(238 243 248 / 0.12);
+  --text: #eef3f8;
+  --text-muted: #c5ced8;
+  --accent: #4c9ffe;
+  --on-accent: #0a1220;
+  --danger: #ff8a80;
+  --warning: #ffcc80;
+  --success: #a5d6a7;
+  --review: #ce93d8;
+
+  --orb: #4c9ffe;
+  --orb-ring: #7ab6ff;
+  --orb-flow: #dbeafe;
+
+  --elev-float: 0 8px 30px rgb(6 16 36 / 0.58);
+
+  color-scheme: dark;
+}
+
+/* teal */
+:root[data-palette="teal"] {
+  --bg: #f0fffe; --surface: #ffffff; --surface-2: #e0f7f5; --surface-3: #c8efeb;
+  --border: rgb(23 107 135 / 0.2);
+  --text: #1a2e38; --text-muted: #176b87; --accent: #176b87; --on-accent: #ffffff; --danger: #c81e1e; --warning: #8a5300;
+  --success: #1e7a4d;
+  --review: #6b3fa0;
+
+  --orb: #64ccc5;
+  --orb-ring: #176b87;
+  --orb-flow: #dafffb;
+  --orb-alert: #f2b84b;
+  --orb-error: #ef4444;
+  --orb-off: #8aa0a8;
+  --orb-plate: var(--surface-2);
+  --orb-auto-plate: transparent;
+
+  --elev-float: 0 10px 30px rgb(0 28 48 / 0.16);
+  --tile-edge: var(--border);
+
+  --r-control: 6px;
+  --r-card: 8px;
+  --r-panel: 12px;
+  --r-tile: 12px;
+
+  --font-ui: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-code: ui-monospace, monospace;
+  --font-heading: "Dela Gothic One", system-ui, sans-serif;
+
+  color-scheme: light;
+}
+
+:root[data-palette="teal"][data-theme="dark"] {
+  --bg: #001c30;
+  --surface: #041e2f;
+  --surface-2: #0a2840;
+  --surface-3: #12354f;
+  --border: rgb(100 204 197 / 0.12);
+  --text: #dafffb;
+  --text-muted: #64ccc5;
+  --accent: #64ccc5; --on-accent: #001c30;
+  --danger: #f87171;
+  --warning: #fbbf24;
+  --success: #6ee7b7;
+  --review: #c4b5fd;
+
+  --elev-float: 0 10px 30px rgb(0 0 0 / 0.45);
+
+  color-scheme: dark;
+}
+
+/* vault */
+:root[data-palette="vault"] {
+  --bg: #f4f2ef; --surface: #ffffff; --surface-2: #faf9f7;
+  --surface-3: #ebe8e4;
+  --border: rgb(0 0 0 / 0.08); --text: #0a0a0a; --text-muted: #5f5f5f; --accent: #92487a; --on-accent: #ffffff; --danger: #b3261e;
+  --warning: #8a5a00;
+  --success: #2e6b4f;
+  --review: #540863; /* apolo-deep */
+
+  --orb: #92487a;
+  --orb-ring: #e49ba6;
+  --orb-flow: #ffd3d5;
+  --orb-alert: #e0a040;
+  --orb-error: #c0392b;
+  --orb-off: #808080;
+  --orb-plate: transparent;
+  --orb-auto-plate: transparent;
+
+  --elev-float: none; --tile-edge: rgb(255 255 255 / 0.75);
+
+  --r-control: 9999px; --r-card: 20px; --r-panel: 28px; --r-tile: 36px; /* sheets */
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --font-ui: "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-code: var(--font-ui);
+  --font-heading: var(--font-ui);
+
+  color-scheme: light;
+}

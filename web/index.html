@@ -8,15 +8,18 @@
       name="description"
       content="Listas y tareas con Markdown, links a GitHub y una API para agentes."
     />
-    <!-- Pinta el tema antes del primer render: modo guardado o el del sistema (Forest es oscuro por defecto). -->
+    <!-- Pinta el tema antes del primer render: paleta y modo guardados, o Forest con el modo del sistema (Vault es solo claro). -->
     <script>
       try {
+        var p = localStorage.getItem('mychecklist.palette')
+        if (['forest', 'azul', 'teal', 'vault'].indexOf(p) < 0) p = 'forest'
         var m = localStorage.getItem('mychecklist.mode')
         if (m !== 'light' && m !== 'dark')
           m = matchMedia('(prefers-color-scheme: light)').matches
             ? 'light'
             : 'dark'
-        document.documentElement.dataset.theme = m
+        document.documentElement.dataset.palette = p
+        document.documentElement.dataset.theme = p === 'vault' ? 'light' : m
       } catch (e) {}
     </script>
   </head>
