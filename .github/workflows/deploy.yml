@@ -10,7 +10,10 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    # El runner de la org tiene que ser el del VPS: el deploy escribe en /home/hermes y
+    # reinicia mychecklist@*. Sin la etiqueta, cualquier runner self-hosted de WeFaber lo toma
+    # y el preflight falla por rutas que no existen.
+    runs-on: [self-hosted, vps-wefaber]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
