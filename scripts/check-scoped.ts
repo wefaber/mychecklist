@@ -10,8 +10,14 @@ import { join, relative, sep } from 'node:path'
 
 const SQL =
   /\b(SELECT\b[^`'"]*\bFROM\b|INSERT\s+INTO\b|UPDATE\s+\w+\s+SET\b|DELETE\s+FROM\b)/i
-// Org-owned tables. Each milestone that adds one lists it here (M1: activity; M2: lists, items).
-export const OWNED_TABLES: string[] = ['activity', 'lists', 'items']
+// Org-owned tables. Each milestone that adds one lists it here (M1: activity; M2: lists, items; M3: item_refs, attachments).
+export const OWNED_TABLES: string[] = [
+  'activity',
+  'lists',
+  'items',
+  'item_refs',
+  'attachments',
+]
 const OWNED = OWNED_TABLES.length
   ? new RegExp(`\\b(${OWNED_TABLES.join('|')})\\b`)
   : /(?!)/

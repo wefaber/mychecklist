@@ -1,14 +1,35 @@
 import { between } from '../../shared/order'
+import { extractRefs } from '../../shared/refs'
+import { titleOf } from '../../shared/title'
 import { ulid } from '../db/ids'
 import {
   openScope,
   type ItemRow,
+  type RefHit,
   type Scope,
   type SearchHit,
 } from '../db/scoped'
 import { DomainError } from '../errors'
 import type { Caller, Deps } from './types'
 import { cleanText, MAX_ITEMS_PER_LIST, MAX_TEXT } from './validate'
+
+/** Un item mencionado por otro (o que lo menciona): lo mínimo para dibujar un chip. */
+export type Mention = {
+  id: string
+  listId: string
+  listName: string
+  /** Primera línea con contenido, sin marcas de Markdown y acotada (`shared/title.ts`); puede quedar vacío. */
+  title: string
+  done: boolean
+}
+
+const mention = (h: RefHit): Mention => ({
+  id: h.id,
+  listId: h.listId,
+  listName: h.listName,
+  title: titleOf(h.text),
+  done: h.doneAt !== null,
+})
 
 export type ItemView = {
   id: string
@@ -20,9 +41,11 @@ export type ItemView = {
   doneAt: number | null
   createdAt: number
   updatedAt: number
+  /** Items que este menciona con `[[id]]` y que siguen vivos. */
+  mentions: Mention[]
 }
 
-const view = (orgId: string, i: ItemRow): ItemView => ({
+const view = (orgId: string, i: ItemRow, mentions: Mention[]): ItemView => ({
   id: i.id,
   orgId,
   listId: i.listId,
@@ -32,7 +55,25 @@ const view = (orgId: string, i: ItemRow): ItemView => ({
   doneAt: i.doneAt,
   createdAt: i.createdAt,
   updatedAt: i.updatedAt,
+  mentions,
 })
+
+const present = (scope: Scope, orgId: string, i: ItemRow) =>
+  view(orgId, i, scope.refs.from(i.id).map(mention))
+
+/**
+ * Deja el índice de referencias igual al texto: solo cuentan ids de items de esta org (borrados incluidos, por si
+ * vuelven) y nunca el propio item. El resto del texto sigue como lo escribió la persona.
+ */
+function syncRefs(scope: Scope, id: string, text: string) {
+  scope.refs.replace(
+    id,
+    extractRefs(text).filter((to) => to !== id && scope.items.get(to, true)),
+  )
+}
+
+/** Tope de backlinks que se devuelven por item. */
+const MAX_BACKLINKS = 100
 
 const via = (c: Caller) => c.via ?? 'web'
 
@@ -66,7 +107,34 @@ export function listItems(
 ): ItemView[] {
   const scope = openScope(db, { orgId, ...caller })
   mustList(scope, listId)
-  return scope.items.inList(listId).map((i) => view(orgId, i))
+  const mentions = scope.refs.fromList(listId)
+  return scope.items
+    .inList(listId)
+    .map((i) => view(orgId, i, (mentions.get(i.id) ?? []).map(mention)))
+}
+
+/** Un item vivo por id, o `null` si no existe (o está borrado). */
+export function getItem(
+  { db }: Pick<Deps, 'db'>,
+  caller: Caller,
+  orgId: string,
+  id: string,
+): ItemView | null {
+  const scope = openScope(db, { orgId, ...caller })
+  const row = scope.items.get(id)
+  return row ? present(scope, orgId, row) : null
+}
+
+/** Items vivos que mencionan a `itemId` con `[[id]]`. */
+export function listBacklinks(
+  { db }: Pick<Deps, 'db'>,
+  caller: Caller,
+  orgId: string,
+  itemId: string,
+): Mention[] {
+  const scope = openScope(db, { orgId, ...caller })
+  must(scope, itemId)
+  return scope.refs.to(itemId, MAX_BACKLINKS).map(mention)
 }
 
 export function searchItems(
@@ -121,6 +189,7 @@ export function createItem(
       },
       now,
     )
+    syncRefs(scope, id, text)
     scope.activity.append(
       {
         type: 'item.created',
@@ -138,7 +207,7 @@ export function createItem(
     actorId: caller.userId,
   })
   bus.publish({ orgId: input.orgId, scope: 'lists', actorId: caller.userId })
-  return view(input.orgId, must(scope, id))
+  return present(scope, input.orgId, must(scope, id))
 }
 
 export function updateItemText(
@@ -156,6 +225,7 @@ export function updateItemText(
   const item = must(scope, input.id)
   db.transaction(() => {
     scope.items.setText(input.id, text, now)
+    syncRefs(scope, input.id, text)
     scope.activity.append(
       {
         type: 'item.edited',
@@ -172,7 +242,7 @@ export function updateItemText(
     listId: item.listId,
     actorId: caller.userId,
   })
-  return view(input.orgId, must(scope, input.id))
+  return present(scope, input.orgId, must(scope, input.id))
 }
 
 export function setItemDone(
@@ -204,7 +274,7 @@ export function setItemDone(
     })
     bus.publish({ orgId: input.orgId, scope: 'lists', actorId: caller.userId })
   }
-  return view(input.orgId, must(scope, input.id))
+  return present(scope, input.orgId, must(scope, input.id))
 }
 
 /**
@@ -275,7 +345,7 @@ export function moveItem(
     })
   if (listId !== item.listId)
     bus.publish({ orgId: input.orgId, scope: 'lists', actorId: caller.userId })
-  return view(input.orgId, must(scope, input.id))
+  return present(scope, input.orgId, must(scope, input.id))
 }
 
 /** Borrado lógico del item y sus subitems: `restoreItem` lo deshace. */
@@ -306,7 +376,7 @@ export function deleteItem(
     actorId: caller.userId,
   })
   bus.publish({ orgId: input.orgId, scope: 'lists', actorId: caller.userId })
-  return view(input.orgId, item)
+  return present(scope, input.orgId, item)
 }
 
 export function restoreItem(
@@ -339,5 +409,5 @@ export function restoreItem(
     actorId: caller.userId,
   })
   bus.publish({ orgId: input.orgId, scope: 'lists', actorId: caller.userId })
-  return view(input.orgId, must(scope, input.id))
+  return present(scope, input.orgId, must(scope, input.id))
 }

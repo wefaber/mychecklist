@@ -2,12 +2,12 @@ import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { t } from '../../i18n'
 import { gql, GraphQLRequestError } from '../../lib/graphql'
 import { useToast } from '../../lib/toast'
-import { keys, type Item, type List } from './api'
+import { keys, MENTION, type Item, type List } from './api'
 import { previousSibling, type Placement } from './tree'
 import { useUndoStack } from './undo'
 
 const LIST = 'id name position open total'
-const ITEM = 'id listId parentId position text done doneAt createdAt updatedAt'
+const ITEM = `id listId parentId position text done doneAt createdAt updatedAt mentions { ${MENTION} }`
 
 /** Llamadas crudas al servidor, sin deshacer ni avisos: las usan las acciones y también sus inversas. */
 function raw(orgId: string) {
@@ -98,6 +98,7 @@ export function errorText(e: unknown): string {
 function refresh(client: QueryClient, orgId: string) {
   void client.invalidateQueries({ queryKey: ['lists', orgId] })
   void client.invalidateQueries({ queryKey: ['items', orgId] })
+  void client.invalidateQueries({ queryKey: ['backlinks', orgId] })
 }
 
 /** Deshace la última acción (botón del aviso y `Mod+Z`). */

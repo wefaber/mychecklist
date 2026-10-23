@@ -40,6 +40,23 @@ tableros. Detalle del item en `Dock` a la derecha. Filtros siempre sobre el cont
   `scripts/gen-palettes.ts` y un test falla si queda viejo. Vault es solo claro.
 - **`/design`:** laboratorio con muestras y revisión de accesibilidad con axe-core en cada tema.
 
+## Markdown, menciones y adjuntos (M3)
+
+- **Una fila dibuja el Markdown en línea y sin nada activo:** negrita, énfasis, código, links como texto subrayado,
+  imágenes como ícono con su descripción y menciones como chip. Un item sin marcas se ve como texto plano, igual que
+  antes. Dentro del botón de la fila no hay links ni botones: abrir el detalle es la única acción.
+- **El detalle escribe y muestra:** el campo de texto va arriba (con `@` para mencionar y el clip para adjuntar) y la
+  **Vista** renderizada debajo, con links activos, imágenes, tablas, casillas y chips que abren el item mencionado.
+- **Chip de mención:** título del item con ícono de casilla y tachado si está completado (nunca solo color). Un item que
+  ya no existe se ve "Item no disponible", en cursiva y con ícono, sin dato clicable.
+- **Links:** el color del texto con subrayado grueso en `--accent`. El texto en `--accent` sobre `--surface-2` no llega a
+  4,5:1 en Azul claro.
+- **Títulos dentro de un item:** siempre `h4`, un nivel debajo de las secciones del detalle, para no romper el esquema
+  de la página.
+- **Imágenes solo adjuntas:** una imagen de otro sitio se muestra como texto con su descripción.
+- **"Mencionado en"** lista los items que enlazan al abierto, con su lista; cada uno lo abre.
+- **Selector `[[`** (`MentionPicker`): diálogo con búsqueda en el servidor, igual que la paleta; flechas, Enter y Esc.
+
 ### Mapa de teclado
 
 | Dónde  | Tecla                                    | Qué hace                                   |
@@ -55,5 +72,6 @@ Las teclas sueltas no se disparan mientras se escribe en un campo. `Tab` no se r
 ## Checklist de pantalla (agregados)
 
 - [x] Arrastrar tiene alternativa de teclado (`Alt+flechas`) y anuncia el movimiento en una región `aria-live`.
-- [ ] El texto del item sobrevive a un round-trip por el export Markdown.
+- [ ] El texto del item sobrevive a un round-trip por el export Markdown (M6).
+- [x] El Markdown, los chips y el selector pasan axe en los cuatro temas (`/design`) y en el detalle abierto.
 - [ ] El estado de GitHub nunca depende solo del color.

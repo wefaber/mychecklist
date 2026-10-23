@@ -20,6 +20,7 @@ const item = (id: string, parentId: string | null = null): Item => ({
   doneAt: null,
   createdAt: '',
   updatedAt: '',
+  mentions: [],
 })
 
 // a (a1, a2), b, c

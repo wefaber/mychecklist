@@ -75,7 +75,15 @@ export const es = {
   'dock.close': 'Cerrar el detalle',
   'dock.text': 'Texto',
   'dock.textHelp':
-    'Se guarda al salir del campo. Con Ctrl o Cmd y Enter se guarda y sigue.',
+    'Se escribe en Markdown. Pegá una imagen para adjuntarla y escribí [[ para mencionar otro item. Se guarda al salir del campo; con Ctrl o Cmd y Enter se guarda y sigue.',
+  'dock.preview': 'Vista',
+  'dock.attach': 'Adjuntar un archivo',
+  'dock.mention': 'Mencionar un item',
+  'dock.uploading': 'Subiendo {name}…',
+  'dock.uploaded': 'Adjuntado: {name}.',
+  'dock.backlinks': 'Mencionado en',
+  'dock.noBacklinks': 'Ningún otro item lo menciona.',
+  'dock.openMention': 'Abrir {title} en {list}',
   'dock.saved': 'Guardado.',
   'dock.done': 'Completado',
   'dock.subitems': 'Subitems',
@@ -88,6 +96,23 @@ export const es = {
   'dock.updated': 'Última edición el {date}',
   'dock.missing': 'Este item ya no existe.',
   'dock.parent': 'Es un subitem de {text}.',
+
+  'mention.title': 'Mencionar un item',
+  'mention.label': 'Buscar un item',
+  'mention.placeholder': 'Parte del texto del item',
+  'mention.empty': 'No hay items que coincidan.',
+  'mention.hint': 'Flechas para moverte, Enter para elegir, Esc para cancelar.',
+  'mention.inList': 'en {name}',
+
+  'md.missing': 'Item no disponible',
+  'md.untitled': 'Item sin título',
+  'md.openRef': 'Abrir {title} en {list}',
+  'md.external': '(se abre en otra pestaña)',
+  'md.image': 'Imagen',
+  'md.imageAlt': 'Imagen adjunta',
+  'md.externalImage': 'Imagen externa: {alt}',
+  'md.taskDone': 'marcado',
+  'md.taskOpen': 'sin marcar',
 
   'palette.title': 'Paleta de comandos',
   'palette.label': 'Buscar comandos, listas e items',
@@ -164,6 +189,7 @@ export const es = {
   'toast.itemMoved': 'Item movido.',
   'toast.itemDeleted': 'Item borrado.',
   'toast.dismiss': 'Cerrar el aviso',
+  'error.fileTooBig': 'El archivo pesa más de 10 MB. Probá con uno más chico.',
   'error.generic': 'No se pudo completar la acción. Probá de nuevo.',
 
   'design.title': 'Laboratorio de diseño',
@@ -180,6 +206,9 @@ export const es = {
   'design.sampleItem': 'Comprar pan',
   'design.sampleDone': 'Llamar al contador',
   'design.sampleSub': 'Pedir el presupuesto',
+  'design.sampleMarkdown':
+    '#### Un título\n\nTexto con **negrita**, _énfasis_, `código` y un [link](https://example.com). Depende de [[{open}]] y sigue lo de [[{done}]].\n\n- [x] Una casilla marcada\n- [ ] Una casilla pendiente\n\n| Columna | Valor |\n| - | - |\n| Uno | 1 |\n\n> Una cita corta.',
+  'design.sampleMarkdownRow': 'Revisar con **cuidado** lo de [[{open}]]',
   'design.sampleEmpty': 'Un estado vacío dice qué hacer.',
 } as const
 
