@@ -1,0 +1,11 @@
+{
+  "extends": "@wefaber/config/tsconfig.react.json",
+  "compilerOptions": {
+    "types": ["bun", "vite/client"],
+    "paths": {
+      "@/*": ["./web/*"],
+      "@shared/*": ["./shared/*"]
+    }
+  },
+  "include": ["web", "shared", "server", "scripts", "vite.config.ts"]
+}

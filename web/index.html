@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MyChecklist</title>
+    <meta
+      name="description"
+      content="Listas y tareas con Markdown, links a GitHub y una API para agentes."
+    />
+    <!-- Pinta el tema antes del primer render: modo guardado o el del sistema (Forest es oscuro por defecto). -->
+    <script>
+      try {
+        var m = localStorage.getItem('mychecklist.mode')
+        if (m !== 'light' && m !== 'dark')
+          m = matchMedia('(prefers-color-scheme: light)').matches
+            ? 'light'
+            : 'dark'
+        document.documentElement.dataset.theme = m
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/app/main.tsx"></script>
+  </body>
+</html>

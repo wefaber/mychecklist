@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "extends": ["./node_modules/@wefaber/config/oxlint.json"],
+  "ignorePatterns": [
+    "dist",
+    "node_modules",
+    "src-tauri/target",
+    "src-tauri/gen"
+  ]
+}
