@@ -24,6 +24,15 @@ describe('migraciones', () => {
     expect(() => migrate(db, dir)).toThrow(/changed after it was applied/)
   })
 
+  test('el fin de línea no cambia el checksum (CRLF en Windows, LF en el VPS)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'mig-'))
+    writeFileSync(join(dir, '0001_a.sql'), 'CREATE TABLE a (x INTEGER);\n')
+    const db = openDb(':memory:')
+    migrate(db, dir)
+    writeFileSync(join(dir, '0001_a.sql'), 'CREATE TABLE a (x INTEGER);\r\n')
+    expect(migrate(db, dir)).toEqual([])
+  })
+
   test('los números van sin saltos', () => {
     const dir = mkdtempSync(join(tmpdir(), 'mig-'))
     writeFileSync(join(dir, '0002_b.sql'), 'SELECT 1;')

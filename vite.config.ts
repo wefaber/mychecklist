@@ -28,6 +28,7 @@ export default defineConfig({
     allowedHosts: ['.ts.net'],
     proxy: {
       '/graphql': 'http://127.0.0.1:4151',
+      '/auth': 'http://127.0.0.1:4151',
       '/health': 'http://127.0.0.1:4151',
       '/ready': 'http://127.0.0.1:4151',
     },
