@@ -36,7 +36,7 @@ jobs     ┘
 | Auth, sesiones, org personal, dos listeners, `scoped.ts`                                        | M1 (hecho) |
 | Listas e items, orden fraccional, deshacer, SSE, temas                                          | M2 (hecho) |
 | Markdown, backlinks, adjuntos                                                                   | M3 (hecho) |
-| Links a GitHub                                                                                  | M4         |
+| Links a GitHub                                                                                  | M4 (hecho) |
 | Code Mode completo (`/codemode/*`, `/mcp`)                                                      | M5 (hecho) |
 | Importar y exportar                                                                             | M6 (hecho) |
 | Orgs de equipo, desktop completo, Ether                                                         | M7–M9      |
@@ -84,6 +84,47 @@ jobs     ┘
   pegar, soltar y adjuntar archivos, el selector `[[` y la lista de backlinks.
 - **Límites:** 10 MB por archivo, 500 MB por org, 50 referencias distintas por item, 100 backlinks por item.
 - **Nginx:** `location /files/` con `client_max_body_size 10m` en los dos vhosts.
+
+## Links a GitHub (M4)
+
+- **Reconocer:** `shared/github.ts` lee URLs `https://github.com/<owner>/<repo>/(issues|pull)/<n>` (mismo código en el
+  cliente y en el servidor, ADR 0006). Es chip solo el link cuyo texto es la propia URL.
+- **Consultar:** `githubLinks(refs)` por GraphQL (hasta 50 links, requiere sesión) → `services/github.ts`. Los repos
+  públicos se resuelven con el token de instalación de la App y quedan en un caché global; los privados, con el token de
+  quien mira y en su caché (`github_public_links`, `github_private_links`, `github_repos`; sin `org_id`, solo las toca
+  `server/db/github.ts`). A la tabla global solo entra lo que GitHub respondió con `isPrivate: false`.
+- **Refrescar:** perezoso, sin job. Vence a los 5 minutos si está abierto, a la hora si está cerrado o mergeado, a los 10
+  si no existe. El cliente repite el pedido al abrir el detalle, al volver a la pestaña y cada 5 minutos con el chip a la
+  vista; los chips que aparecen juntos salen en un solo pedido (`web/lib/github.ts`).
+- **Límites:** lotes de 25 links por consulta de GitHub; con menos de 200 pedidos restantes el servidor deja de consultar
+  con ese token hasta que se reinicia el límite y responde con el caché. Los tokens de usuario se renuevan con el refresh
+  token (una renovación a la vez por usuario); el de instalación vive en memoria.
+- **Config:** `GITHUB_APP_ID` y `GITHUB_APP_PRIVATE_KEY` (opcionales, `deploy/README.md`). Sin ellas todo se resuelve con
+  el token de quien mira.
+- **Verificación con GitHub real:** `GITHUB_TOKEN=$(gh auth token) bun scripts/github-live.ts <url>...`.
+## Code Mode (M5)
+
+- **Tokens** (ADR 0007): `api_tokens`, `mck_` + 32 bytes en base64url, solo el sha256 en la base y el secreto visible una
+  vez. Un token es un usuario, una org y una puerta; modo `read` o `write`; vence a los 90 días por defecto. Se crean,
+  listan y revocan por GraphQL con sesión (`createApiToken`, `Org.apiTokens`, `revokeApiToken`), solo `owner` o `admin`,
+  hasta 20 vigentes por usuario y org. La pantalla está en `/ajustes/tokens`. La tabla no es "con dueño": se busca por
+  hash antes de que exista un scope (`server/db/tokens.ts`); todo lo que el token hace pasa por `openScope`, que revisa
+  membresía y puerta en cada llamada.
+- **Registry** (`server/services/registry.ts`): cada operación se declara una vez con `defineOp` (esquemas TypeBox, modo
+  `read`/`write`) y llama a `services/*` con el `Caller` del token (`via: 'mcp'`). Ninguna operación recibe `orgId`.
+  `scripts/gen-codemode.ts` genera `server/mcp/generated/checklist.d.ts` y `spec.json`; un test falla si quedan viejos.
+  Agregar una operación al registry la expone sola en `search`, `execute` y el d.ts.
+- **Sandbox**: cada ejecución levanta un Bun Worker (`server/mcp/worker.ts`) con QuickJS (`sandbox.ts`) y el host
+  (`exec.ts`) atiende las llamadas por `postMessage`, las valida contra el esquema y las cuenta. Límites: 5 s (el Worker
+  se corta con `terminate()` a los 6), 64 MB, 50 llamadas, 64 KB de resultado, 200 líneas de log, 32 KB de código, 64 KB
+  de cuerpo y 500 items por lectura. Un `execute` con token de lectura ni siquiera tiene las operaciones de escritura.
+- **Frecuencia** (`limiter.ts`): una ejecución a la vez por token, 60 por minuto y 4 Workers por proceso, en memoria; si
+  no hay lugar, 429 `RATE_LIMITED` (no hay cola).
+- **Rutas**: `POST /codemode/search`, `POST /codemode/execute` y `POST /mcp` (Streamable HTTP sin estado ni SSE,
+  `initialize`/`ping`/`tools/list`/`tools/call`). Bearer `Authorization`; un `Origin` ajeno da 403; la cookie de sesión no
+  sirve acá ni el Bearer en `/graphql`. Nginx proxea `/codemode/` y `/mcp` en los dos vhosts (cuerpo de hasta 64 KB).
+- **Ergonomía**: en `lists.create`, `items.create` y los `move`, `afterId` omitido es "al final" y `null` "al principio".
+  Los errores del host llegan al código como `Error` con `message` `CODIGO: texto`.
 
 ## Importar y exportar (M6)
 

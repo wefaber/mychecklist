@@ -149,3 +149,31 @@ export function saveGithubTokens(
     now,
   )
 }
+
+/** Tokens de GitHub del usuario tal como están guardados (cifrados), o `null` si nunca entró. */
+export function loadGithubTokens(
+  db: Database,
+  userId: string,
+): SealedTokens | null {
+  const row = db
+    .query<
+      {
+        access_enc: string
+        refresh_enc: string | null
+        access_expires_at: number | null
+        refresh_expires_at: number | null
+      },
+      [string]
+    >(
+      'SELECT access_enc, refresh_enc, access_expires_at, refresh_expires_at FROM github_tokens WHERE user_id = ?',
+    )
+    .get(userId)
+  return row
+    ? {
+        accessEnc: row.access_enc,
+        refreshEnc: row.refresh_enc,
+        accessExpiresAt: row.access_expires_at,
+        refreshExpiresAt: row.refresh_expires_at,
+      }
+    : null
+}

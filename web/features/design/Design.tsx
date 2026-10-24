@@ -1,6 +1,8 @@
 import { Link } from '@tanstack/react-router'
 import { Button, Chip, EmptyState, Field, Kbd, Tile } from '@wefaber/ui'
 import { ArrowLeft, LoaderCircle, ScanSearch } from 'lucide-react'
+import { githubKey } from '@shared/github'
+import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { t } from '../../i18n'
 import type { MessageKey } from '../../i18n/es'
@@ -13,6 +15,7 @@ import {
   type Palette,
 } from '../../lib/theme'
 import type { Item, List } from '../lists/api'
+import type { GithubLink } from '../../lib/github'
 import { Markdown } from '../../lib/markdown'
 import type { Mention } from '../../lib/mentions'
 import { ItemRow, type RowActions } from '../lists/ItemRow'
@@ -129,10 +132,43 @@ async function audit(palette: Palette, mode: Mode): Promise<Run> {
   }
 }
 
+/** Links de muestra a GitHub con su respuesta ya cargada: el laboratorio nunca le pregunta nada al servidor. */
+const GH_ISSUE = 'https://github.com/wefaber/mychecklist/issues/12'
+const GH_PULL = 'https://github.com/wefaber/mychecklist/pull/8'
+const GH_SAMPLES: GithubLink[] = [
+  {
+    owner: 'wefaber',
+    repo: 'mychecklist',
+    number: 12,
+    status: 'ok',
+    kind: 'issue',
+    title: 'Abrir el detalle con Enter',
+    state: 'open',
+    stale: false,
+    fetchedAt: '2026-01-01T00:00:00Z',
+  },
+  {
+    owner: 'wefaber',
+    repo: 'mychecklist',
+    number: 8,
+    status: 'ok',
+    kind: 'pull',
+    title: 'Markdown, menciones y adjuntos',
+    state: 'merged',
+    stale: false,
+    fetchedAt: '2026-01-01T00:00:00Z',
+  },
+]
+
 export function Design() {
   const theme = useTheme()
+  const client = useQueryClient()
   const [runs, setRuns] = useState<Run[]>([])
   const [busy, setBusy] = useState(false)
+  useState(() => {
+    for (const sample of GH_SAMPLES)
+      client.setQueryData(['github-link', githubKey(sample)], sample)
+  })
 
   const run = async (combos: [Palette, Mode][]) => {
     setBusy(true)
@@ -211,6 +247,8 @@ export function Design() {
                 text={t('design.sampleMarkdown', {
                   open: REF_OPEN,
                   done: REF_DONE,
+                  issue: GH_ISSUE,
+                  pull: GH_PULL,
                 })}
                 orgId="design"
                 mentions={mentions}
@@ -223,7 +261,10 @@ export function Design() {
                 orgId="design"
                 item={sample(
                   '4',
-                  t('design.sampleMarkdownRow', { open: REF_OPEN }),
+                  t('design.sampleMarkdownRow', {
+                    open: REF_OPEN,
+                    pull: GH_PULL,
+                  }),
                   {
                     mentions,
                   },

@@ -14,8 +14,8 @@ Una **GitHub App usada solo para tokens de usuario**: sigue siendo OAuth del usu
 lectura (issues, pull requests, contents, checks), tokens que expiran con refresh y varios callbacks.
 
 - El token se guarda cifrado (AES-256-GCM) con una clave del archivo de entorno; sin clave, falla cerrado.
-- Sin webhooks: el estado se refresca al abrir un item y cada 5 minutos (`jobs/github-refresh.ts`, con lease).
-- En orgs de equipo, el título de un item de GitHub se oculta a quien no tiene acceso al repo (`fetched_by`).
+- Sin webhooks. El refresco de los links a issues y PRs (perezoso, sin job) y su caché, que separa repos públicos y
+  privados, quedaron en el ADR 0006.
 - Si se prefiere una OAuth App, el cambio queda acotado a `server/auth/github.ts`.
 
 ## Consecuencias

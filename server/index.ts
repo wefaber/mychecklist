@@ -6,8 +6,10 @@ import { loadConfig } from './config'
 import { openDb } from './db/connection'
 import { migrate } from './db/migrate'
 import { createBus } from './events'
+import { createGithubApi } from './github/api'
 import { createLimiter } from './mcp/limiter'
 import { INGRESSES } from './ingress'
+import { createGithubLinks } from './services/github'
 
 const path = process.env.MYCHECKLIST_DB ?? './data/mychecklist.db'
 const dev = process.env.NODE_ENV !== 'production'
@@ -24,11 +26,31 @@ if (!github || !config.tokenKey)
   )
 
 const bus = createBus()
+// Uno solo para las dos puertas: los límites de la API de GitHub y el token de instalación se comparten.
+const githubLinks = createGithubLinks({
+  db,
+  api: createGithubApi(config.githubApp),
+  login: github,
+  tokenKey: config.tokenKey,
+})
+if (!config.githubApp)
+  console.warn(
+    'links a GitHub: faltan GITHUB_APP_ID o GITHUB_APP_PRIVATE_KEY, los repos públicos se resuelven con el token de quien mira',
+  )
+
 const limiter = createLimiter()
 
 // Un listener por puerta, ambos en loopback: Nginx es lo único que ve la red (ARCHITECTURE.md › Network, ADR 0001).
 for (const ingress of INGRESSES) {
-  createApp(db, { ingress, config, github, bus, limiter, dev }).listen({
+  createApp(db, {
+    ingress,
+    config,
+    github,
+    bus,
+    githubLinks,
+    limiter,
+    dev,
+  }).listen({
     hostname: '127.0.0.1',
     port: config.ports[ingress],
   })

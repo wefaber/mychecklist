@@ -39,6 +39,15 @@ export function fakeGithub(profile: GithubProfile): GithubClient {
         refreshExpiresAt: 2_100_000_000_000,
       }
     },
+    refresh: async (refresh) => {
+      if (refresh !== 'ghr_refresh') throw new Error('bad refresh token')
+      return {
+        accessToken: 'ghu_access_2',
+        refreshToken: 'ghr_refresh_2',
+        expiresAt: 2_000_000_000_000,
+        refreshExpiresAt: 2_100_000_000_000,
+      }
+    },
     fetchProfile: async () => profile,
   }
 }
