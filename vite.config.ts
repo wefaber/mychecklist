@@ -33,6 +33,8 @@ export default defineConfig({
       '/auth': 'http://127.0.0.1:4161',
       '/events': 'http://127.0.0.1:4161',
       '/files': 'http://127.0.0.1:4161',
+      '/export': 'http://127.0.0.1:4161',
+      '/import': 'http://127.0.0.1:4161',
       '/health': 'http://127.0.0.1:4161',
       '/ready': 'http://127.0.0.1:4161',
     },

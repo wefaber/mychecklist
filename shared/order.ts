@@ -22,7 +22,8 @@ function mid(a: string, b: string | null): string {
   return DIGITS[da]! + mid(a.slice(1), null)
 }
 
-function valid(key: string): boolean {
+/** Una clave de orden bien formada: base 62, no vacía y sin ceros finales. */
+export function isOrderKey(key: string): boolean {
   return (
     key.length > 0 &&
     !key.endsWith('0') &&
@@ -35,7 +36,10 @@ function valid(key: string): boolean {
  * o el final de la lista. Lanza si las claves no son válidas o no están en orden.
  */
 export function between(before: string | null, after: string | null): string {
-  if ((before !== null && !valid(before)) || (after !== null && !valid(after)))
+  if (
+    (before !== null && !isOrderKey(before)) ||
+    (after !== null && !isOrderKey(after))
+  )
     throw new Error('Clave de orden inválida')
   if (before !== null && after !== null && before >= after)
     throw new Error('Las claves de orden no están en orden')
