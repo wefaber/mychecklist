@@ -34,12 +34,9 @@ export function fileStore(dir: string): FileStore {
 export async function readCapped(
   request: Request,
   max: number,
+  message = `Un archivo admite hasta ${max / 1024 / 1024} MB`,
 ): Promise<Uint8Array> {
-  const tooBig = () =>
-    new DomainError(
-      'LIMIT_REACHED',
-      `Un archivo admite hasta ${max / 1024 / 1024} MB`,
-    )
+  const tooBig = () => new DomainError('LIMIT_REACHED', message)
   if (Number(request.headers.get('content-length') ?? 0) > max) throw tooBig()
   const reader = request.body?.getReader()
   if (!reader) return new Uint8Array(0)

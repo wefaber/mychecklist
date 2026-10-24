@@ -40,6 +40,13 @@ export type HostFn = (...args: unknown[]) => Promise<unknown>
 /** Nested namespaces of host functions: `{ items: { create } }` becomes `host.items.create(...)` in the sandbox. */
 export type HostApi = { [name: string]: HostFn | HostApi }
 
+export type RunOptions = {
+  /** Nombre del global que lleva la API del host (`host` por defecto; Code Mode usa `checklist`). */
+  name?: string
+  /** Valores JSON expuestos como globales de solo datos (`search` recibe `spec`). */
+  data?: Record<string, unknown>
+}
+
 export type RunResult =
   | {
       ok: true
@@ -72,6 +79,11 @@ class LimitError extends Error {
   }
 }
 
+/** Evalúa texto JSON dentro de la VM sin pasarlo por el parser de JS (un `__proto__` no es sintaxis de objeto). */
+function parseJson(vm: QuickJSContext, json: string) {
+  return vm.evalCode(`JSON.parse(${JSON.stringify(json)})`)
+}
+
 /** JSON text of a handle, or `null` text when the value has none (`undefined`, functions). */
 function dumpJson(vm: QuickJSContext, handle: QuickJSHandle): string {
   const stringify = vm.getProp(vm.global, 'JSON')
@@ -97,13 +109,15 @@ function dumpJson(vm: QuickJSContext, handle: QuickJSHandle): string {
 }
 
 /**
- * Runs `code` as the body of an async function. `args` is exposed as the global `host` (plus `console.log`).
+ * Runs `code` as the body of an async function. The host API is exposed as a global (`host` unless `options.name`
+ * says otherwise) next to `console.log` and the JSON globals of `options.data`.
  * The code returns its result with `return`.
  */
 export async function runSandboxed(
   code: string,
   host: HostApi,
   limits: Limits = DEFAULT_LIMITS,
+  options: RunOptions = {},
 ): Promise<RunResult> {
   const started = performance.now()
   const QuickJS = await getQuickJS()
@@ -158,14 +172,20 @@ export async function runSandboxed(
             const args = argHandles.map((h) => vm.dump(h))
             const deferred = vm.newPromise()
             owned.push(deferred)
+            // Un `Error` de verdad (con `message`), no un texto suelto: es lo que el código del agente espera atrapar.
+            const rejectWith = (message: string) => {
+              const error = vm.newError(message)
+              deferred.reject(error)
+              error.dispose()
+            }
             const work = entry(...args)
               .then((value) => {
                 if (closed) return
                 const json = JSON.stringify(value ?? null)
-                const handle = vm.evalCode(`(${json})`)
+                const handle = parseJson(vm, json)
                 if (handle.error) {
                   handle.error.dispose()
-                  deferred.reject(vm.newString('Host returned a bad value'))
+                  rejectWith('Host returned a bad value')
                 } else {
                   deferred.resolve(handle.value)
                   handle.value.dispose()
@@ -174,7 +194,7 @@ export async function runSandboxed(
               .catch((err: unknown) => {
                 if (closed) return
                 const message = err instanceof Error ? err.message : String(err)
-                deferred.reject(vm.newString(message))
+                rejectWith(message)
               })
               .finally(() => {
                 pending.delete(work)
@@ -195,8 +215,18 @@ export async function runSandboxed(
     }
     const hostObj = vm.newObject()
     install(hostObj, host)
-    vm.setProp(vm.global, 'host', hostObj)
+    vm.setProp(vm.global, options.name ?? 'host', hostObj)
     hostObj.dispose()
+
+    for (const [name, value] of Object.entries(options.data ?? {})) {
+      const parsed = parseJson(vm, JSON.stringify(value ?? null))
+      if (parsed.error) {
+        parsed.error.dispose()
+        return fail('CODE_ERROR', `No se pudo cargar ${name}`)
+      }
+      vm.setProp(vm.global, name, parsed.value)
+      parsed.value.dispose()
+    }
 
     const wrapped = `(async () => {\n${code}\n})()`
     const evaluated = vm.evalCode(wrapped, 'agent.js')

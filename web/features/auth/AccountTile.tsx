@@ -1,5 +1,6 @@
+import { Link } from '@tanstack/react-router'
 import { Button, EmptyState, Tile } from '@wefaber/ui'
-import { LoaderCircle, LogIn, LogOut } from 'lucide-react'
+import { KeyRound, LoaderCircle, LogIn, LogOut } from 'lucide-react'
 import { t } from '../../i18n'
 import { inTauri } from '../../lib/server'
 import { startLogin, useViewer } from './useViewer'
@@ -37,6 +38,14 @@ export function AccountTile() {
           />
         ) : null}
         <span className="text-body">{viewer.name ?? viewer.login}</span>
+        <Link
+          to="/ajustes/tokens"
+          aria-label={t('tokens.link')}
+          className="inline-flex h-8 items-center gap-1.5 rounded-control px-2 text-body font-medium text-muted transition-colors duration-(--dur-fast) hover:bg-text/8 hover:text-text sm:px-3"
+        >
+          <KeyRound aria-hidden size={14} />
+          <span className="hidden sm:inline">{t('tokens.link')}</span>
+        </Link>
         <Button variant="ghost" onClick={signOut} disabled={signingOut}>
           <LogOut aria-hidden size={14} />
           {t('auth.signOut')}

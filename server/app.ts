@@ -13,6 +13,9 @@ import { fileStore, readCapped, type FileStore } from './files'
 import { createBus, type Bus } from './events'
 import type { Ingress } from './ingress'
 import { maxDepth } from './graphql/limits'
+import { codemodeRoutes } from './mcp/routes'
+import { createLimiter, type Limiter } from './mcp/limiter'
+import type { Limits } from './mcp/sandbox'
 import { buildSchema, type Context } from './graphql/schema'
 import {
   GENERIC_MIME,
@@ -51,6 +54,10 @@ type AppOptions = {
   bus?: Bus
   /** Almacén de adjuntos; por defecto `config.filesDir`. */
   files?: FileStore
+  /** Tope de ejecuciones de Code Mode; los dos listeners comparten el del proceso (ADR 0007). */
+  limiter?: Limiter
+  /** Solo los tests bajan los límites del sandbox. */
+  codemodeLimits?: Limits
   dev?: boolean
   logging?: boolean
   now?: () => number
@@ -112,6 +119,17 @@ export function createApp(db: Database, opts: AppOptions = {}) {
 
   return new Elysia()
     .use(authRoutes({ db, ingress, config, github: opts.github ?? null, now }))
+    .use(
+      codemodeRoutes({
+        db,
+        bus,
+        ingress,
+        config,
+        now,
+        limiter: opts.limiter ?? createLimiter(undefined, now),
+        limits: opts.codemodeLimits,
+      }),
+    )
     .get('/health', () => ({ status: 'ok' }))
     .get('/ready', ({ set }) => {
       let ready = false
@@ -222,6 +240,7 @@ const STATUS: Record<ErrorCode, number> = {
   AUTH_NOT_CONFIGURED: 503,
   INVALID_INPUT: 400,
   LIMIT_REACHED: 413,
+  RATE_LIMITED: 429,
 }
 
 const fileError = (code: ErrorCode, message: string) =>
