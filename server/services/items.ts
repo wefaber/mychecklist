@@ -65,7 +65,7 @@ const present = (scope: Scope, orgId: string, i: ItemRow) =>
  * Deja el índice de referencias igual al texto: solo cuentan ids de items de esta org (borrados incluidos, por si
  * vuelven) y nunca el propio item. El resto del texto sigue como lo escribió la persona.
  */
-function syncRefs(scope: Scope, id: string, text: string) {
+export function syncRefs(scope: Scope, id: string, text: string) {
   scope.refs.replace(
     id,
     extractRefs(text).filter((to) => to !== id && scope.items.get(to, true)),

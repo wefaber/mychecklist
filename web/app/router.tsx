@@ -10,6 +10,7 @@ import { useViewer } from '../features/auth/useViewer'
 import { ListPage } from '../features/lists/ListPage'
 import { CommandPalette } from '../features/palette/CommandPalette'
 import { ShortcutsDialog } from '../features/palette/ShortcutsDialog'
+import { TransferDialog } from '../features/transfer/TransferDialog'
 import { Toaster } from '../components/Toaster'
 import { AppLayout, Home } from './Shell'
 
@@ -20,6 +21,7 @@ function Root() {
       <Outlet />
       <CommandPalette orgId={orgId} />
       <ShortcutsDialog />
+      <TransferDialog orgId={orgId} />
       <Toaster />
     </>
   )

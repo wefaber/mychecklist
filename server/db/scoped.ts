@@ -83,8 +83,16 @@ export type Scope = {
     all(): ListRow[]
     /** `withDeleted` permite alcanzar una lista borrada para restaurarla. */
     get(id: string, withDeleted?: boolean): ListRow | null
+    /** `createdAt`, `updatedAt` y `deletedAt` solo los usa el import, que conserva las fechas del archivo. */
     insert(
-      row: { id: string; name: string; position: string },
+      row: {
+        id: string
+        name: string
+        position: string
+        createdAt?: number
+        updatedAt?: number
+        deletedAt?: number | null
+      },
       now: number,
     ): void
     rename(id: string, name: string, now: number): void
@@ -93,6 +101,8 @@ export type Scope = {
     /** Hueco justo después de `afterId` (o al principio si es `null`), sin contar a `exclude`. */
     gap(afterId: string | null, exclude?: string): Gap
     count(): number
+    /** Todas las listas, borradas incluidas, en orden (export). */
+    dump(): ListRow[]
   }
   items: {
     /** Items vivos de una lista, planos y en orden (el cliente arma el árbol con `parentId`). */
@@ -105,6 +115,10 @@ export type Scope = {
         parentId: string | null
         position: string
         text: string
+        doneAt?: number | null
+        createdAt?: number
+        updatedAt?: number
+        deletedAt?: number | null
       },
       now: number,
     ): void
@@ -126,6 +140,8 @@ export type Scope = {
       exclude?: string,
     ): Gap
     countInList(listId: string): number
+    /** Todos los items, borrados incluidos, planos y en orden de `position` (export). */
+    dump(): ItemRow[]
     search(query: string, limit: number): SearchHit[]
   }
   /** Índice de referencias `[[id]]` entre items de la org (M3). Solo cuenta items vivos en listas vivas. */
@@ -150,9 +166,12 @@ export type Scope = {
         name: string
         mime: string
         size: number
+        createdAt?: number
       },
       now: number,
     ): void
+    /** Todos los adjuntos de la org, del más viejo al más nuevo (export). */
+    all(): AttachmentRow[]
     /** Bytes que ocupan los adjuntos de la org (cuota). */
     totalBytes(): number
   }
@@ -385,8 +404,17 @@ export function openScope(
       },
       insert(row, now) {
         db.query(
-          'INSERT INTO lists (id, org_id, name, position, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        ).run(row.id, orgId, row.name, row.position, userId, now, now)
+          'INSERT INTO lists (id, org_id, name, position, created_by, created_at, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        ).run(
+          row.id,
+          orgId,
+          row.name,
+          row.position,
+          userId,
+          row.createdAt ?? now,
+          row.updatedAt ?? now,
+          row.deletedAt ?? null,
+        )
       },
       rename(id, name, now) {
         db.query(
@@ -424,6 +452,14 @@ export function openScope(
           )
           .get(orgId)!.n
       },
+      dump() {
+        return db
+          .query<ListSqlRow, [string]>(
+            `${LIST_SELECT} WHERE l.org_id = ? ORDER BY l.position, l.id`,
+          )
+          .all(orgId)
+          .map(toList)
+      },
     },
     items: {
       inList(listId) {
@@ -447,7 +483,7 @@ export function openScope(
       },
       insert(row, now) {
         db.query(
-          'INSERT INTO items (id, org_id, list_id, parent_id, position, text, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          'INSERT INTO items (id, org_id, list_id, parent_id, position, text, done_at, created_by, created_at, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         ).run(
           row.id,
           orgId,
@@ -455,9 +491,11 @@ export function openScope(
           row.parentId,
           row.position,
           row.text,
+          row.doneAt ?? null,
           userId,
-          now,
-          now,
+          row.createdAt ?? now,
+          row.updatedAt ?? now,
+          row.deletedAt ?? null,
         )
       },
       setText(id, text, now) {
@@ -527,6 +565,14 @@ export function openScope(
             'SELECT COUNT(*) AS n FROM items WHERE org_id = ? AND list_id = ? AND deleted_at IS NULL',
           )
           .get(orgId, listId)!.n
+      },
+      dump() {
+        return db
+          .query<ItemSqlRow, [string]>(
+            `SELECT ${ITEM_COLUMNS} FROM items WHERE org_id = ? ORDER BY position, id`,
+          )
+          .all(orgId)
+          .map(toItem)
       },
       search(query, limit) {
         return db
@@ -641,8 +687,16 @@ export function openScope(
           row.mime,
           row.size,
           userId,
-          now,
+          row.createdAt ?? now,
         )
+      },
+      all() {
+        return db
+          .query<AttachmentSqlRow, [string]>(
+            `SELECT ${ATTACHMENT_COLUMNS} FROM attachments WHERE org_id = ? ORDER BY id`,
+          )
+          .all(orgId)
+          .map(toAttachment)
       },
       totalBytes() {
         return db

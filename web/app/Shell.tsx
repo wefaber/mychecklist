@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   CircleAlert,
   CircleCheck,
+  ArrowDownUp,
   Keyboard,
   LoaderCircle,
   Search,
@@ -136,7 +137,7 @@ export function AppLayout() {
   const { loading, viewer, orgId } = useViewer()
   const lists = useLists(orgId)
   const params = useParams({ strict: false }) as { listId?: string }
-  const { setPalette, setShortcuts } = useUi()
+  const { setPalette, setShortcuts, setTransfer } = useUi()
   useShortcutListener()
   useOrgEvents(orgId)
   useGlobalShortcuts(lists.data ?? [], params.listId ?? null)
@@ -164,6 +165,13 @@ export function AppLayout() {
               {t('palette.open')}
               <Kbd keys="Mod+K" />
             </button>
+          ) : null}
+          {viewer ? (
+            <IconButton
+              label={t('transfer.title')}
+              icon={<ArrowDownUp size={18} />}
+              onClick={() => setTransfer(true)}
+            />
           ) : null}
           <IconButton
             label={t('shortcuts.open')}
