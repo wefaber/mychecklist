@@ -148,6 +148,17 @@ export function createApp(db: Database, opts: AppOptions = {}) {
       }),
     )
     .use(devLoginRoute({ db, ingress, config, now }))
+    .use(
+      codemodeRoutes({
+        db,
+        bus,
+        ingress,
+        config,
+        now,
+        limiter: opts.limiter ?? createLimiter(undefined, now),
+        limits: opts.codemodeLimits,
+      }),
+    )
     .get('/health', () => ({ status: 'ok' }))
     .get('/ready', ({ set }) => {
       let ready = false
