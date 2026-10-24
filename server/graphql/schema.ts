@@ -6,6 +6,7 @@ import { DomainError } from '../errors'
 import type { Bus } from '../events'
 import type { Ingress } from '../ingress'
 import { listOrgs } from '../services/accounts'
+import type { GithubLinks, GithubLinkView } from '../services/github'
 import {
   createItem,
   deleteItem,
@@ -41,6 +42,8 @@ export type Context = {
   viewer: User | null
   /** Hay credenciales de GitHub y clave de cifrado: el login puede completarse. */
   loginAvailable: boolean
+  /** Resuelve links a issues y PRs de GitHub (M4, ADR 0006). */
+  githubLinks: GithubLinks
 }
 
 function caller(ctx: Context): Caller {
@@ -141,6 +144,52 @@ export function buildSchema() {
     }),
   })
 
+  const GithubKind = builder.enumType('GithubKind', {
+    values: ['issue', 'pull'] as const,
+  })
+  const GithubState = builder.enumType('GithubState', {
+    values: ['open', 'closed', 'not_planned', 'draft', 'merged'] as const,
+  })
+  const GithubLinkStatus = builder.enumType('GithubLinkStatus', {
+    description:
+      '`unavailable`: no hay dato (sin token, límite agotado o GitHub caído); el cliente muestra solo el link.',
+    values: ['ok', 'not_found', 'unavailable'] as const,
+  })
+  const GithubLinkInput = builder.inputType('GithubLinkInput', {
+    fields: (t) => ({
+      owner: t.string({ required: true }),
+      repo: t.string({ required: true }),
+      number: t.int({ required: true }),
+    }),
+  })
+  const GithubLinkRef = builder.objectRef<GithubLinkView>('GithubLink')
+  GithubLinkRef.implement({
+    description:
+      'Estado de un issue o PR de GitHub. `owner` y `repo` vuelven en minúsculas.',
+    fields: (t) => ({
+      owner: t.exposeString('owner'),
+      repo: t.exposeString('repo'),
+      number: t.exposeInt('number'),
+      status: t.field({ type: GithubLinkStatus, resolve: (l) => l.status }),
+      kind: t.field({
+        type: GithubKind,
+        nullable: true,
+        resolve: (l) => l.kind,
+      }),
+      title: t.exposeString('title', { nullable: true }),
+      state: t.field({
+        type: GithubState,
+        nullable: true,
+        resolve: (l) => l.state,
+      }),
+      stale: t.exposeBoolean('stale'),
+      fetchedAt: t.string({
+        nullable: true,
+        resolve: (l) => iso(l.fetchedAt),
+      }),
+    }),
+  })
+
   const OrgRef = builder.objectRef<OrgSummary>('Org')
   OrgRef.implement({
     fields: (t) => ({
@@ -221,6 +270,16 @@ export function buildSchema() {
         args: { id: t.arg.id({ required: true }) },
         resolve: (_r, args, ctx) =>
           getOrg(ctx.db, caller(ctx), String(args.id)),
+      }),
+      githubLinks: t.field({
+        type: [GithubLinkRef],
+        description:
+          'Estado vivo de hasta 50 issues o PRs de GitHub, con el token de quien pregunta (ADR 0006).',
+        args: {
+          refs: t.arg({ type: [GithubLinkInput], required: true }),
+        },
+        resolve: (_r, args, ctx) =>
+          ctx.githubLinks.resolve(caller(ctx), args.refs),
       }),
     }),
   })

@@ -20,6 +20,8 @@ export type GithubProfile = {
 export type GithubClient = {
   authorizeUrl(state: string, redirectUri: string): string
   exchangeCode(code: string, redirectUri: string): Promise<GithubTokens>
+  /** Cambia un refresh token (de un solo uso) por un par de tokens nuevo. */
+  refresh(refreshToken: string): Promise<GithubTokens>
   fetchProfile(accessToken: string): Promise<GithubProfile>
 }
 
@@ -43,6 +45,38 @@ export function githubClient(
   fetchFn: typeof fetch = fetch,
   now: () => number = Date.now,
 ): GithubClient {
+  /** Pide tokens al endpoint de OAuth de GitHub; canjear el código y renovar comparten el formato de respuesta. */
+  async function tokenRequest(
+    what: 'exchange' | 'refresh',
+    params: Record<string, string>,
+  ): Promise<GithubTokens> {
+    const res = await fetchFn('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        client_id: cfg.clientId,
+        client_secret: cfg.clientSecret,
+        ...params,
+      }),
+    })
+    const body = (await res.json()) as TokenResponse
+    if (!res.ok || !body.access_token)
+      throw new Error(
+        `GitHub token ${what} failed: ${body.error ?? res.status}`,
+      )
+    return {
+      accessToken: body.access_token,
+      refreshToken: body.refresh_token ?? null,
+      expiresAt: body.expires_in ? now() + body.expires_in * 1000 : null,
+      refreshExpiresAt: body.refresh_token_expires_in
+        ? now() + body.refresh_token_expires_in * 1000
+        : null,
+    }
+  }
+
   return {
     authorizeUrl(state, redirectUri) {
       const url = new URL('https://github.com/login/oauth/authorize')
@@ -52,34 +86,14 @@ export function githubClient(
       return url.toString()
     },
 
-    async exchangeCode(code, redirectUri) {
-      const res = await fetchFn('https://github.com/login/oauth/access_token', {
-        method: 'POST',
-        headers: {
-          accept: 'application/json',
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          client_id: cfg.clientId,
-          client_secret: cfg.clientSecret,
-          code,
-          redirect_uri: redirectUri,
-        }),
-      })
-      const body = (await res.json()) as TokenResponse
-      if (!res.ok || !body.access_token)
-        throw new Error(
-          `GitHub token exchange failed: ${body.error ?? res.status}`,
-        )
-      return {
-        accessToken: body.access_token,
-        refreshToken: body.refresh_token ?? null,
-        expiresAt: body.expires_in ? now() + body.expires_in * 1000 : null,
-        refreshExpiresAt: body.refresh_token_expires_in
-          ? now() + body.refresh_token_expires_in * 1000
-          : null,
-      }
-    },
+    exchangeCode: (code, redirectUri) =>
+      tokenRequest('exchange', { code, redirect_uri: redirectUri }),
+
+    refresh: (refreshToken) =>
+      tokenRequest('refresh', {
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+      }),
 
     async fetchProfile(accessToken) {
       const res = await fetchFn('https://api.github.com/user', {

@@ -11,8 +11,10 @@ import ReactMarkdown, {
   type Components,
 } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { githubRefOfLink } from '@shared/github'
 import { refIdOf, remarkRefs } from '@shared/refs'
 import { t } from '../i18n'
+import { GithubChip } from './GithubChip'
 import {
   ATTACHMENT,
   attachmentUrl,
@@ -75,6 +77,22 @@ function RefChip({
   )
 }
 
+/** El texto de un link cuando es un solo tramo (así llega el autolink de `remark-gfm`); `null` si lleva formato. */
+function plainText(children: ReactNode): string | null {
+  if (typeof children === 'string') return children
+  return Array.isArray(children) &&
+    children.length === 1 &&
+    typeof children[0] === 'string'
+    ? children[0]
+    : null
+}
+
+/** Issue o PR de GitHub cuando el link es la propia URL pegada (ADR 0006); si no, es un link normal. */
+function githubOf(href: string, children: ReactNode) {
+  const text = plainText(children)
+  return text === null ? null : githubRefOfLink(href, text)
+}
+
 const block =
   (className = '') =>
   ({ children }: { children?: ReactNode }) => (
@@ -127,6 +145,8 @@ function components({ orgId, mentions, mode, onOpenItem }: Props): Components {
       a: ({ href = '', children }) => {
         const ref = refIdOf(href)
         if (ref) return <RefChip mention={byId.get(ref)} />
+        const gh = githubOf(href, children)
+        if (gh) return <GithubChip href={href} gh={gh} mode="row" />
         return <span className="underline underline-offset-2">{children}</span>
       },
       img: ({ alt }) => (
@@ -198,6 +218,8 @@ function components({ orgId, mentions, mode, onOpenItem }: Props): Components {
     a: ({ href = '', children }) => {
       const ref = refIdOf(href)
       if (ref) return <RefChip mention={byId.get(ref)} onOpen={open} />
+      const gh = githubOf(href, children)
+      if (gh) return <GithubChip href={href} gh={gh} mode="full" />
       const file = ATTACHMENT.exec(href)
       if (file)
         return (

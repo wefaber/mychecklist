@@ -25,7 +25,11 @@ export function useViewer() {
         credentials: 'include',
       })
     },
-    onSuccess: () => client.invalidateQueries({ queryKey: ['me'] }),
+    onSuccess: () => {
+      // Los títulos de GitHub se trajeron con el token de esta persona: no quedan en memoria al salir.
+      client.removeQueries({ queryKey: ['github-link'] })
+      return client.invalidateQueries({ queryKey: ['me'] })
+    },
   })
   return {
     loading: query.isPending,

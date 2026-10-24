@@ -6,6 +6,8 @@ export type Config = {
   /** Origen externo de cada puerta; arma el callback de OAuth y decide `Secure` en las cookies. */
   origins: Record<Ingress, string>
   github: { clientId: string; clientSecret: string } | null
+  /** La GitHub App como app (no como login): firma el JWT que da el token de instalación (ADR 0006). */
+  githubApp: { appId: string; privateKey: string } | null
   /** Carpeta de los adjuntos (`files/<aa>/<sha256>`); por defecto al lado de la base. */
   filesDir: string
   /** Clave AES-256 de los tokens guardados. Sin clave, el login falla cerrado. */
@@ -39,6 +41,14 @@ export function loadConfig(
       env.MYCHECKLIST_FILES ??
       join(dirname(env.MYCHECKLIST_DB ?? './data/mychecklist.db'), 'files'),
     github: clientId && clientSecret ? { clientId, clientSecret } : null,
+    githubApp:
+      env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY
+        ? {
+            appId: env.GITHUB_APP_ID,
+            // Un archivo de entorno de una sola línea guarda los saltos de la clave como `\n` literales.
+            privateKey: env.GITHUB_APP_PRIVATE_KEY.replace(/\\n/g, '\n'),
+          }
+        : null,
     tokenKey: env.MYCHECKLIST_TOKEN_KEY
       ? decodeKey(env.MYCHECKLIST_TOKEN_KEY)
       : null,

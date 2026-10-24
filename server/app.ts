@@ -6,6 +6,7 @@ import { authRoutes } from './auth/routes'
 import { parseCookies, sessionCookieName } from './auth/cookies'
 import type { GithubClient } from './auth/github'
 import { loadConfig, type Config } from './config'
+import { createGithubApi } from './github/api'
 import { migrationsApplied } from './db/migrate'
 import { findSessionUser } from './db/sessions'
 import { DomainError, type ErrorCode } from './errors'
@@ -20,6 +21,7 @@ import {
   openAttachment,
   uploadAttachment,
 } from './services/attachments'
+import { createGithubLinks, type GithubLinks } from './services/github'
 import { getOrg } from './services/orgs'
 
 const MAX_DEPTH = 8
@@ -51,6 +53,8 @@ type AppOptions = {
   bus?: Bus
   /** Almacén de adjuntos; por defecto `config.filesDir`. */
   files?: FileStore
+  /** Resolutor de links a GitHub compartido por los dos listeners (guarda los límites de la API en memoria). */
+  githubLinks?: GithubLinks
   dev?: boolean
   logging?: boolean
   now?: () => number
@@ -77,6 +81,15 @@ export function createApp(db: Database, opts: AppOptions = {}) {
   const now = opts.now ?? Date.now
   const bus = opts.bus ?? createBus()
   const files = opts.files ?? fileStore(config.filesDir)
+  const githubLinks =
+    opts.githubLinks ??
+    createGithubLinks({
+      db,
+      api: createGithubApi(config.githubApp),
+      login: opts.github ?? null,
+      tokenKey: config.tokenKey,
+      now,
+    })
   const secure = config.origins[ingress].startsWith('https:')
   const viewerOf = (request: Request) => {
     const token = parseCookies(request.headers.get('cookie'))[
@@ -101,6 +114,7 @@ export function createApp(db: Database, opts: AppOptions = {}) {
       ingress,
       viewer: viewerOf(request),
       loginAvailable: Boolean(opts.github && config.tokenKey),
+      githubLinks,
     }),
     graphqlEndpoint: '/graphql',
     landingPage: false,

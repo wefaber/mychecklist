@@ -36,7 +36,7 @@ jobs     ┘
 | Auth, sesiones, org personal, dos listeners, `scoped.ts`                                        | M1 (hecho) |
 | Listas e items, orden fraccional, deshacer, SSE, temas                                          | M2 (hecho) |
 | Markdown, backlinks, adjuntos                                                                   | M3 (hecho) |
-| Links a GitHub                                                                                  | M4         |
+| Links a GitHub                                                                                  | M4 (hecho) |
 | Code Mode completo (`/codemode/*`, `/mcp`)                                                      | M5         |
 | Import/Export, orgs de equipo, desktop completo, Ether                                          | M6–M9      |
 
@@ -83,6 +83,24 @@ jobs     ┘
   pegar, soltar y adjuntar archivos, el selector `[[` y la lista de backlinks.
 - **Límites:** 10 MB por archivo, 500 MB por org, 50 referencias distintas por item, 100 backlinks por item.
 - **Nginx:** `location /files/` con `client_max_body_size 10m` en los dos vhosts.
+
+## Links a GitHub (M4)
+
+- **Reconocer:** `shared/github.ts` lee URLs `https://github.com/<owner>/<repo>/(issues|pull)/<n>` (mismo código en el
+  cliente y en el servidor, ADR 0006). Es chip solo el link cuyo texto es la propia URL.
+- **Consultar:** `githubLinks(refs)` por GraphQL (hasta 50 links, requiere sesión) → `services/github.ts`. Los repos
+  públicos se resuelven con el token de instalación de la App y quedan en un caché global; los privados, con el token de
+  quien mira y en su caché (`github_public_links`, `github_private_links`, `github_repos`; sin `org_id`, solo las toca
+  `server/db/github.ts`). A la tabla global solo entra lo que GitHub respondió con `isPrivate: false`.
+- **Refrescar:** perezoso, sin job. Vence a los 5 minutos si está abierto, a la hora si está cerrado o mergeado, a los 10
+  si no existe. El cliente repite el pedido al abrir el detalle, al volver a la pestaña y cada 5 minutos con el chip a la
+  vista; los chips que aparecen juntos salen en un solo pedido (`web/lib/github.ts`).
+- **Límites:** lotes de 25 links por consulta de GitHub; con menos de 200 pedidos restantes el servidor deja de consultar
+  con ese token hasta que se reinicia el límite y responde con el caché. Los tokens de usuario se renuevan con el refresh
+  token (una renovación a la vez por usuario); el de instalación vive en memoria.
+- **Config:** `GITHUB_APP_ID` y `GITHUB_APP_PRIVATE_KEY` (opcionales, `deploy/README.md`). Sin ellas todo se resuelve con
+  el token de quien mira.
+- **Verificación con GitHub real:** `GITHUB_TOKEN=$(gh auth token) bun scripts/github-live.ts <url>...`.
 
 ## Red y puertos
 
