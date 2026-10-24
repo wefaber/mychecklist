@@ -7,6 +7,7 @@
     "dev": "bun run dev:web",
     "dev:web": "vite",
     "dev:server": "bun --watch server/index.ts",
+    "dev:desktop": "bun scripts/dev-desktop.ts",
     "build": "bun run build:web",
     "build:web": "tsc --noEmit && vite build",
     "start": "bun server/index.ts",

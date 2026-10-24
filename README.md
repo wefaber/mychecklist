@@ -48,12 +48,13 @@ base de desarrollo).
 
 ## Scripts
 
-| Script          | Qué hace                                                                                    |
-| --------------- | ------------------------------------------------------------------------------------------- |
-| `bun run check` | `tsc --noEmit`, `oxlint`, `check-scoped` y `bun test`. Tiene que pasar antes de cada commit |
-| `bun run build` | Compila el cliente en `dist/web`                                                            |
-| `bun run start` | Arranca el servidor (producción)                                                            |
-| `bun run fmt`   | Formatea con `oxfmt`                                                                        |
+| Script                | Qué hace                                                                                    |
+| --------------------- | ------------------------------------------------------------------------------------------- |
+| `bun run check`       | `tsc --noEmit`, `oxlint`, `check-scoped` y `bun test`. Tiene que pasar antes de cada commit |
+| `bun run build`       | Compila el cliente en `dist/web`                                                            |
+| `bun run start`       | Arranca el servidor (producción)                                                            |
+| `bun run fmt`         | Formatea con `oxfmt`                                                                        |
+| `bun run dev:desktop` | Servidor local + `tauri dev`; la ventana entra sola con una sesión de prueba (`/auth/dev`)  |
 
 ## Deploy
 
