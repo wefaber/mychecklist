@@ -7,6 +7,7 @@ import { openDb } from './db/connection'
 import { migrate } from './db/migrate'
 import { createBus } from './events'
 import { createGithubApi } from './github/api'
+import { createLimiter } from './mcp/limiter'
 import { INGRESSES } from './ingress'
 import { createGithubLinks } from './services/github'
 
@@ -37,9 +38,19 @@ if (!config.githubApp)
     'links a GitHub: faltan GITHUB_APP_ID o GITHUB_APP_PRIVATE_KEY, los repos públicos se resuelven con el token de quien mira',
   )
 
+const limiter = createLimiter()
+
 // Un listener por puerta, ambos en loopback: Nginx es lo único que ve la red (ARCHITECTURE.md › Network, ADR 0001).
 for (const ingress of INGRESSES) {
-  createApp(db, { ingress, config, github, bus, githubLinks, dev }).listen({
+  createApp(db, {
+    ingress,
+    config,
+    github,
+    bus,
+    githubLinks,
+    limiter,
+    dev,
+  }).listen({
     hostname: '127.0.0.1',
     port: config.ports[ingress],
   })

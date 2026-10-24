@@ -1,0 +1,772 @@
+{
+  "version": 1,
+  "ops": [
+    {
+      "name": "org.get",
+      "mode": "read",
+      "summary": "La organización del token y el rol del usuario en ella.",
+      "input": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {}
+      },
+      "output": {
+        "$ref": "Org"
+      }
+    },
+    {
+      "name": "lists.list",
+      "mode": "read",
+      "summary": "Las listas vivas, en orden.",
+      "input": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {}
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "List"
+        }
+      }
+    },
+    {
+      "name": "lists.get",
+      "mode": "read",
+      "summary": "Una lista por id.",
+      "input": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "maxLength": 40,
+            "type": "string"
+          }
+        }
+      },
+      "output": {
+        "$ref": "List"
+      }
+    },
+    {
+      "name": "lists.create",
+      "mode": "write",
+      "summary": "Crea una lista. `afterId`: el item o la lista tras la que va; omitido va al final y `null` al principio.",
+      "input": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "maxLength": 80,
+            "type": "string"
+          },
+          "afterId": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "output": {
+        "$ref": "List"
+      }
+    },
+    {
+      "name": "lists.rename",
+      "mode": "write",
+      "summary": "Cambia el nombre de una lista.",
+      "input": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "maxLength": 40,
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 80,
+            "type": "string"
+          }
+        }
+      },
+      "output": {
+        "$ref": "List"
+      }
+    },
+    {
+      "name": "lists.move",
+      "mode": "write",
+      "summary": "Mueve una lista. `afterId`: el item o la lista tras la que va; omitido va al final y `null` al principio.",
+      "input": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "maxLength": 40,
+            "type": "string"
+          },
+          "afterId": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "output": {
+        "$ref": "List"
+      }
+    },
+    {
+      "name": "lists.delete",
+      "mode": "write",
+      "summary": "Borra una lista (borrado lógico: `lists.restore` la devuelve).",
+      "input": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "maxLength": 40,
+            "type": "string"
+          }
+        }
+      },
+      "output": {
+        "$ref": "List"
+      }
+    },
+    {
+      "name": "lists.restore",
+      "mode": "write",
+      "summary": "Restaura una lista borrada.",
+      "input": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "maxLength": 40,
+            "type": "string"
+          }
+        }
+      },
+      "output": {
+        "$ref": "List"
+      }
+    },
+    {
+      "name": "items.list",
+      "mode": "read",
+      "summary": "Items vivos de una lista, planos y en orden (los subitems traen `parentId`). Hasta 500 por llamada; seguí con `offset`.",
+      "input": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "listId"
+        ],
+        "properties": {
+          "listId": {
+            "minLength": 1,
+            "maxLength": 40,
+            "type": "string"
+          },
+          "limit": {
+            "minimum": 1,
+            "maximum": 500,
+            "type": "integer"
+          },
+          "offset": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "Item"
+        }
+      }
+    },
+    {
+      "name": "items.get",
+      "mode": "read",
+      "summary": "Un item vivo por id, o null si no existe.",
+      "input": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "maxLength": 40,
+            "type": "string"
+          }
+        }
+      },
+      "output": {
+        "anyOf": [
+          {
+            "$ref": "Item"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "name": "items.search",
+      "mode": "read",
+      "summary": "Busca items por texto en toda la organización (hasta 50).",
+      "input": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "properties": {
+          "query": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "first": {
+            "minimum": 1,
+            "maximum": 50,
+            "type": "integer"
+          }
+        }
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "SearchHit"
+        }
+      }
+    },
+    {
+      "name": "items.backlinks",
+      "mode": "read",
+      "summary": "Items vivos cuyo texto enlaza a este con `[[id]]`.",
+      "input": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "maxLength": 40,
+            "type": "string"
+          }
+        }
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "Mention"
+        }
+      }
+    },
+    {
+      "name": "items.create",
+      "mode": "write",
+      "summary": "Crea un item en una lista (con `parentId`, un subitem). `afterId`: el item o la lista tras la que va; omitido va al final y `null` al principio.",
+      "input": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "listId",
+          "text"
+        ],
+        "properties": {
+          "listId": {
+            "minLength": 1,
+            "maxLength": 40,
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 4000,
+            "description": "Markdown.",
+            "type": "string"
+          },
+          "parentId": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "afterId": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "output": {
+        "$ref": "Item"
+      }
+    },
+    {
+      "name": "items.updateText",
+      "mode": "write",
+      "summary": "Reemplaza el texto (Markdown) de un item.",
+      "input": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "text"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "maxLength": 40,
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 4000,
+            "type": "string"
+          }
+        }
+      },
+      "output": {
+        "$ref": "Item"
+      }
+    },
+    {
+      "name": "items.setDone",
+      "mode": "write",
+      "summary": "Completa o reabre un item.",
+      "input": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "done"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "maxLength": 40,
+            "type": "string"
+          },
+          "done": {
+            "type": "boolean"
+          }
+        }
+      },
+      "output": {
+        "$ref": "Item"
+      }
+    },
+    {
+      "name": "items.move",
+      "mode": "write",
+      "summary": "Mueve un item (a otra lista o de padre con `listId` y `parentId`; omitidos, donde está; `parentId: null` lo pasa a primer nivel). `afterId`: el item o la lista tras la que va; omitido va al final y `null` al principio.",
+      "input": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "maxLength": 40,
+            "type": "string"
+          },
+          "afterId": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "listId": {
+            "minLength": 1,
+            "maxLength": 40,
+            "type": "string"
+          },
+          "parentId": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "output": {
+        "$ref": "Item"
+      }
+    },
+    {
+      "name": "items.delete",
+      "mode": "write",
+      "summary": "Borra un item y sus subitems (borrado lógico: `items.restore` los devuelve).",
+      "input": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "maxLength": 40,
+            "type": "string"
+          }
+        }
+      },
+      "output": {
+        "$ref": "Item"
+      }
+    },
+    {
+      "name": "items.restore",
+      "mode": "write",
+      "summary": "Restaura un item borrado.",
+      "input": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "maxLength": 40,
+            "type": "string"
+          }
+        }
+      },
+      "output": {
+        "$ref": "Item"
+      }
+    },
+    {
+      "name": "activity.list",
+      "mode": "read",
+      "summary": "Los últimos cambios de la organización, los más nuevos primero (hasta 100).",
+      "input": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "first": {
+            "minimum": 1,
+            "maximum": 100,
+            "type": "integer"
+          }
+        }
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "Activity"
+        }
+      }
+    }
+  ],
+  "types": {
+    "List": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "open",
+        "total"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "open": {
+          "description": "Items sin completar.",
+          "type": "integer"
+        },
+        "total": {
+          "description": "Items vivos.",
+          "type": "integer"
+        }
+      }
+    },
+    "Mention": {
+      "description": "Un item enlazado con `[[id]]`.",
+      "type": "object",
+      "required": [
+        "id",
+        "listId",
+        "listName",
+        "title",
+        "done"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "listId": {
+          "type": "string"
+        },
+        "listName": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "done": {
+          "type": "boolean"
+        }
+      }
+    },
+    "Item": {
+      "type": "object",
+      "required": [
+        "id",
+        "listId",
+        "parentId",
+        "text",
+        "done",
+        "doneAt",
+        "createdAt",
+        "updatedAt",
+        "mentions"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "listId": {
+          "type": "string"
+        },
+        "parentId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "text": {
+          "description": "Markdown.",
+          "type": "string"
+        },
+        "done": {
+          "type": "boolean"
+        },
+        "doneAt": {
+          "anyOf": [
+            {
+              "description": "Fecha ISO 8601.",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "createdAt": {
+          "description": "Fecha ISO 8601.",
+          "type": "string"
+        },
+        "updatedAt": {
+          "description": "Fecha ISO 8601.",
+          "type": "string"
+        },
+        "mentions": {
+          "type": "array",
+          "items": {
+            "$ref": "Mention"
+          }
+        }
+      }
+    },
+    "SearchHit": {
+      "type": "object",
+      "required": [
+        "id",
+        "listId",
+        "listName",
+        "text",
+        "done"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "listId": {
+          "type": "string"
+        },
+        "listName": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "done": {
+          "type": "boolean"
+        }
+      }
+    },
+    "Activity": {
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "entityType",
+        "entityId",
+        "via",
+        "at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "entityType": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "entityId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "via": {
+          "description": "web, mcp, import o job.",
+          "type": "string"
+        },
+        "at": {
+          "description": "Fecha ISO 8601.",
+          "type": "string"
+        }
+      }
+    },
+    "Org": {
+      "description": "La organización del token.",
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "role"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "const": "personal",
+              "type": "string"
+            },
+            {
+              "const": "team",
+              "type": "string"
+            }
+          ]
+        },
+        "role": {
+          "anyOf": [
+            {
+              "const": "owner",
+              "type": "string"
+            },
+            {
+              "const": "admin",
+              "type": "string"
+            },
+            {
+              "const": "member",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -32,6 +32,12 @@ import {
   type ListView,
 } from '../services/lists'
 import { getOrg, listActivity } from '../services/orgs'
+import {
+  createApiToken,
+  listTokens,
+  revokeToken,
+  type TokenView,
+} from '../services/tokens'
 import type { Caller } from '../services/types'
 
 export type Context = {
@@ -75,6 +81,51 @@ export function buildSchema() {
       entityId: t.exposeString('entityId', { nullable: true }),
       via: t.exposeString('via'),
       at: t.string({ resolve: (a) => new Date(a.at).toISOString() }),
+    }),
+  })
+
+  const TokenMode = builder.enumType('TokenMode', {
+    description: '`read` solo ve las operaciones de lectura; `write` ve todas.',
+    values: ['read', 'write'] as const,
+  })
+  const TokenExpiry = builder.enumType('TokenExpiry', {
+    values: {
+      DAYS_30: { value: 30 },
+      DAYS_90: { value: 90 },
+      DAYS_365: { value: 365 },
+      NEVER: { value: 0 },
+    } as const,
+  })
+
+  const ApiTokenRef = builder.objectRef<TokenView>('ApiToken')
+  ApiTokenRef.implement({
+    description:
+      'Token de API de Code Mode. El secreto solo se ve al crearlo (`createApiToken`).',
+    fields: (t) => ({
+      id: t.exposeID('id'),
+      name: t.exposeString('name'),
+      mode: t.field({ type: TokenMode, resolve: (k) => k.mode }),
+      hint: t.exposeString('hint'),
+      createdAt: t.string({ resolve: (k) => iso(k.createdAt)! }),
+      lastUsedAt: t.string({
+        nullable: true,
+        resolve: (k) => iso(k.lastUsedAt),
+      }),
+      expiresAt: t.string({ nullable: true, resolve: (k) => iso(k.expiresAt) }),
+      revokedAt: t.string({ nullable: true, resolve: (k) => iso(k.revokedAt) }),
+    }),
+  })
+
+  const CreatedApiTokenRef = builder.objectRef<{
+    token: TokenView
+    secret: string
+  }>('CreatedApiToken')
+  CreatedApiTokenRef.implement({
+    fields: (t) => ({
+      token: t.field({ type: ApiTokenRef, resolve: (c) => c.token }),
+      secret: t.exposeString('secret', {
+        description: 'El token en claro. No se vuelve a mostrar.',
+      }),
     }),
   })
 
@@ -206,6 +257,11 @@ export function buildSchema() {
       lists: t.field({
         type: [ListRef],
         resolve: (o, _a, ctx) => listLists({ db: ctx.db }, caller(ctx), o.id),
+      }),
+      apiTokens: t.field({
+        type: [ApiTokenRef],
+        description: 'Tus tokens de API en esta organización.',
+        resolve: (o, _a, ctx) => listTokens(ctx.db, caller(ctx), o.id),
       }),
       list: t.field({
         type: ListRef,
@@ -431,6 +487,37 @@ export function buildSchema() {
             orgId: String(a.orgId),
             id: String(a.id),
           }),
+      }),
+      createApiToken: t.field({
+        type: CreatedApiTokenRef,
+        description:
+          'Crea un token de Code Mode para esta organización, atado a la puerta de tu sesión. Devuelve el secreto una sola vez.',
+        args: {
+          orgId: t.arg.id({ required: true }),
+          name: t.arg.string({ required: true }),
+          mode: t.arg({ type: TokenMode, required: true }),
+          expiry: t.arg({ type: TokenExpiry, defaultValue: 90 }),
+        },
+        resolve: (_r, a, ctx) =>
+          createApiToken(ctx.db, caller(ctx), {
+            orgId: String(a.orgId),
+            name: a.name,
+            mode: a.mode,
+            expiresInDays: a.expiry === 0 ? null : (a.expiry ?? 90),
+          }),
+      }),
+      revokeApiToken: t.boolean({
+        args: {
+          orgId: t.arg.id({ required: true }),
+          id: t.arg.id({ required: true }),
+        },
+        resolve: (_r, a, ctx) => {
+          revokeToken(ctx.db, caller(ctx), {
+            orgId: String(a.orgId),
+            id: String(a.id),
+          })
+          return true
+        },
       }),
       restoreItem: t.field({
         type: ItemRef,
