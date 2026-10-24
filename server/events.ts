@@ -1,8 +1,11 @@
 /** Qué cambió en una org; el cliente invalida lo que tenga en pantalla y vuelve a pedirlo por GraphQL. */
 export type ChangeEvent = {
   orgId: string
-  /** `lists` = cambió el conjunto, el orden o los contadores de listas; `list` = cambió el contenido de `listId`. */
-  scope: 'lists' | 'list'
+  /**
+   * `lists` = cambió el conjunto, el orden o los contadores de listas; `list` = cambió el contenido de `listId`;
+   * `members` = cambiaron los miembros, sus roles o las invitaciones de la org.
+   */
+  scope: 'lists' | 'list' | 'members'
   listId?: string
   actorId: string
 }

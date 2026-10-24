@@ -31,6 +31,21 @@ import {
   restoreList,
   type ListView,
 } from '../services/lists'
+import {
+  acceptInvitation,
+  createTeamOrg,
+  declineInvitation,
+  inviteMember,
+  leaveOrg,
+  listInvitations,
+  listMembers,
+  myInvitations,
+  removeMember,
+  revokeInvitation,
+  setMemberRole,
+  type InvitationView,
+  type MemberView,
+} from '../services/members'
 import { getOrg, listActivity } from '../services/orgs'
 import {
   createApiToken,
@@ -70,6 +85,41 @@ export function buildSchema() {
   })
   const Role = builder.enumType('Role', {
     values: ['owner', 'admin', 'member'] as const,
+  })
+
+  const InviteRole = builder.enumType('InviteRole', {
+    values: ['admin', 'member'] as const,
+  })
+  const IngressEnum = builder.enumType('Ingress', {
+    description:
+      'Por qué puerta entró la request: `tailnet` es la única que ve las organizaciones de equipo.',
+    values: ['public', 'tailnet'] as const,
+  })
+
+  const MemberRef = builder.objectRef<MemberView>('Member')
+  MemberRef.implement({
+    fields: (t) => ({
+      userId: t.exposeID('userId'),
+      login: t.exposeString('login'),
+      name: t.exposeString('name', { nullable: true }),
+      avatarUrl: t.exposeString('avatarUrl', { nullable: true }),
+      role: t.field({ type: Role, resolve: (m) => m.role }),
+      joinedAt: t.string({ resolve: (m) => iso(m.joinedAt)! }),
+    }),
+  })
+
+  const InvitationRef = builder.objectRef<InvitationView>('Invitation')
+  InvitationRef.implement({
+    fields: (t) => ({
+      id: t.exposeID('id'),
+      orgId: t.exposeID('orgId'),
+      orgName: t.exposeString('orgName'),
+      login: t.exposeString('login'),
+      role: t.field({ type: InviteRole, resolve: (i) => i.role }),
+      invitedBy: t.exposeString('invitedBy', { nullable: true }),
+      createdAt: t.string({ resolve: (i) => iso(i.createdAt)! }),
+      expiresAt: t.string({ resolve: (i) => iso(i.expiresAt)! }),
+    }),
   })
 
   const ActivityRef = builder.objectRef<ActivityEntry>('Activity')
@@ -258,6 +308,16 @@ export function buildSchema() {
         type: [ListRef],
         resolve: (o, _a, ctx) => listLists({ db: ctx.db }, caller(ctx), o.id),
       }),
+      members: t.field({
+        type: [MemberRef],
+        resolve: (o, _a, ctx) => listMembers(ctx.db, caller(ctx), o.id),
+      }),
+      invitations: t.field({
+        type: [InvitationRef],
+        description:
+          'Invitaciones vigentes de la organización. Solo `owner` o `admin`.',
+        resolve: (o, _a, ctx) => listInvitations(ctx.db, caller(ctx), o.id),
+      }),
       apiTokens: t.field({
         type: [ApiTokenRef],
         description: 'Tus tokens de API en esta organización.',
@@ -306,12 +366,22 @@ export function buildSchema() {
         type: [OrgRef],
         resolve: (_u, _a, ctx) => listOrgs(ctx.db, caller(ctx)),
       }),
+      invitations: t.field({
+        type: [InvitationRef],
+        description:
+          'Invitaciones pendientes dirigidas a tu login. Vacío fuera de la tailnet.',
+        resolve: (_u, _a, ctx) => myInvitations(ctx.db, caller(ctx)),
+      }),
     }),
   })
 
   builder.queryType({
     fields: (t) => ({
       version: t.string({ resolve: () => process.env.APP_VERSION ?? 'dev' }),
+      ingress: t.field({
+        type: IngressEnum,
+        resolve: (_r, _a, ctx) => ctx.ingress,
+      }),
       loginAvailable: t.boolean({
         resolve: (_r, _a, ctx) => ctx.loginAvailable,
       }),
@@ -516,6 +586,88 @@ export function buildSchema() {
             orgId: String(a.orgId),
             id: String(a.id),
           })
+          return true
+        },
+      }),
+      createTeamOrg: t.field({
+        type: OrgRef,
+        description: 'Crea una organización de equipo. Solo por la tailnet.',
+        args: { name: t.arg.string({ required: true }) },
+        resolve: (_r, a, ctx) =>
+          createTeamOrg(ctx.db, caller(ctx), { name: a.name }),
+      }),
+      inviteMember: t.field({
+        type: InvitationRef,
+        description: 'Invita a un login de GitHub. Vence a los 14 días.',
+        args: {
+          orgId: t.arg.id({ required: true }),
+          login: t.arg.string({ required: true }),
+          role: t.arg({ type: InviteRole, defaultValue: 'member' }),
+        },
+        resolve: (_r, a, ctx) =>
+          inviteMember(ctx, caller(ctx), {
+            orgId: String(a.orgId),
+            login: a.login,
+            role: a.role ?? 'member',
+          }),
+      }),
+      revokeInvitation: t.boolean({
+        args: {
+          orgId: t.arg.id({ required: true }),
+          id: t.arg.id({ required: true }),
+        },
+        resolve: (_r, a, ctx) => {
+          revokeInvitation(ctx, caller(ctx), {
+            orgId: String(a.orgId),
+            id: String(a.id),
+          })
+          return true
+        },
+      }),
+      acceptInvitation: t.field({
+        type: OrgRef,
+        args: { id: t.arg.id({ required: true }) },
+        resolve: (_r, a, ctx) =>
+          acceptInvitation(ctx, caller(ctx), { id: String(a.id) }),
+      }),
+      declineInvitation: t.boolean({
+        args: { id: t.arg.id({ required: true }) },
+        resolve: (_r, a, ctx) => {
+          declineInvitation(ctx, caller(ctx), { id: String(a.id) })
+          return true
+        },
+      }),
+      setMemberRole: t.field({
+        type: MemberRef,
+        args: {
+          orgId: t.arg.id({ required: true }),
+          userId: t.arg.id({ required: true }),
+          role: t.arg({ type: Role, required: true }),
+        },
+        resolve: (_r, a, ctx) =>
+          setMemberRole(ctx, caller(ctx), {
+            orgId: String(a.orgId),
+            userId: String(a.userId),
+            role: a.role,
+          }),
+      }),
+      removeMember: t.boolean({
+        args: {
+          orgId: t.arg.id({ required: true }),
+          userId: t.arg.id({ required: true }),
+        },
+        resolve: (_r, a, ctx) => {
+          removeMember(ctx, caller(ctx), {
+            orgId: String(a.orgId),
+            userId: String(a.userId),
+          })
+          return true
+        },
+      }),
+      leaveOrg: t.boolean({
+        args: { orgId: t.arg.id({ required: true }) },
+        resolve: (_r, a, ctx) => {
+          leaveOrg(ctx, caller(ctx), { orgId: String(a.orgId) })
           return true
         },
       }),

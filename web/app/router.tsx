@@ -8,6 +8,7 @@ import {
 import { useEffect } from 'react'
 import { useViewer } from '../features/auth/useViewer'
 import { ListPage } from '../features/lists/ListPage'
+import { TeamPage } from '../features/orgs/TeamPage'
 import { TokensPage } from '../features/tokens/TokensPage'
 import { CommandPalette } from '../features/palette/CommandPalette'
 import { ShortcutsDialog } from '../features/palette/ShortcutsDialog'
@@ -77,6 +78,12 @@ const tokensRoute = createRoute({
   component: TokensRoute,
 })
 
+const teamRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/equipo',
+  component: TeamPage,
+})
+
 /** Laboratorio de diseño: sin datos y sin sesión; se carga aparte para que axe-core no pese en la app. */
 const designRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -89,7 +96,7 @@ const designRoute = createRoute({
 
 export const router = createRouter({
   routeTree: rootRoute.addChildren([
-    appRoute.addChildren([homeRoute, listRoute, tokensRoute]),
+    appRoute.addChildren([homeRoute, listRoute, tokensRoute, teamRoute]),
     designRoute,
   ]),
   defaultPreload: 'intent',

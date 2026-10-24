@@ -15,6 +15,7 @@ import { useViewer } from '../features/auth/useViewer'
 import { undoLast } from '../features/lists/actions'
 import { useLists, useOrgEvents } from '../features/lists/api'
 import { ListsBar } from '../features/lists/ListsBar'
+import { OrgMenu } from '../features/orgs/OrgMenu'
 import { ThemeMenu } from '../features/theme/ThemeMenu'
 import { t } from '../i18n'
 import type { MessageKey } from '../i18n/es'
@@ -178,6 +179,7 @@ export function AppLayout() {
             icon={<Keyboard size={18} />}
             onClick={() => setShortcuts(true)}
           />
+          <OrgMenu />
           <ThemeMenu />
           {viewer ? <AccountTile /> : null}
         </div>

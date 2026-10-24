@@ -2,18 +2,31 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { gql } from '../../lib/graphql'
 import { apiUrl } from '../../lib/server'
+import { pickOrg, useActiveOrg } from '../orgs/active'
+
+export type OrgRole = 'owner' | 'admin' | 'member'
+export type ViewerOrg = {
+  id: string
+  kind: 'personal' | 'team'
+  name: string
+  role: OrgRole
+}
 
 export type Viewer = {
   login: string
   name: string | null
   avatarUrl: string | null
-  orgs: { id: string; kind: 'personal' | 'team'; name: string }[]
+  orgs: ViewerOrg[]
 }
 
-type MeResult = { loginAvailable: boolean; me: Viewer | null }
+type MeResult = {
+  loginAvailable: boolean
+  ingress: 'public' | 'tailnet'
+  me: Viewer | null
+}
 
 const ME =
-  '{ loginAvailable me { login name avatarUrl orgs { id kind name } } }'
+  '{ loginAvailable ingress me { login name avatarUrl orgs { id kind name role } } }'
 
 const DEV_LOGIN_KEY = 'mychecklist.devlogin'
 
@@ -21,6 +34,9 @@ const DEV_LOGIN_KEY = 'mychecklist.devlogin'
 export function useViewer() {
   const client = useQueryClient()
   const query = useQuery({ queryKey: ['me'], queryFn: () => gql<MeResult>(ME) })
+  const activeId = useActiveOrg((s) => s.id)
+  const setOrg = useActiveOrg((s) => s.set)
+  const org = pickOrg(query.data?.me?.orgs ?? [], activeId)
   // Solo desarrollo (`bun run dev:desktop`): sin sesión, entra una vez con la de prueba del servidor local.
   const needsDevLogin =
     import.meta.env.VITE_DEV_LOGIN === '1' && query.data && !query.data.me
@@ -52,8 +68,12 @@ export function useViewer() {
     loading: query.isPending,
     failed: query.isError,
     viewer: query.data?.me ?? null,
-    /** La org personal: donde viven las listas hasta que lleguen las orgs de equipo (M7). */
-    orgId: query.data?.me?.orgs.find((o) => o.kind === 'personal')?.id ?? null,
+    /** La org en pantalla: la elegida si todavía pertenece a ella, si no la personal. */
+    org,
+    orgId: org?.id ?? null,
+    setOrg,
+    /** Por qué puerta se mira: las organizaciones de equipo solo existen en la `tailnet`. */
+    ingress: query.data?.ingress ?? 'public',
     loginAvailable: query.data?.loginAvailable ?? false,
     signOut: () => signOut.mutate(),
     signingOut: signOut.isPending,

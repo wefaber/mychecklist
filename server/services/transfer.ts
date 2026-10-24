@@ -172,6 +172,12 @@ export async function importOrg(
   now = Date.now(),
 ): Promise<ImportResult> {
   const scope = openScope(db, { orgId: input.orgId, ...caller })
+  // Importar agrega mucho de una vez: en un equipo lo hace quien administra (ADR 0009). Exportar queda para todos.
+  if (scope.role === 'member')
+    throw new DomainError(
+      'FORBIDDEN',
+      'Solo quien administra la organización importa',
+    )
   const file = parseExport(input.payload)
 
   // Contenido de los adjuntos: se verifica contra lo que declara el archivo antes de tocar nada.

@@ -5,6 +5,7 @@ export type ErrorCode =
   | 'AUTH_NOT_CONFIGURED'
   | 'INVALID_INPUT'
   | 'LIMIT_REACHED'
+  | 'CONFLICT'
   | 'RATE_LIMITED'
 
 /** Fallo esperado del dominio: la capa de transporte lo traduce a `extensions.code` (GraphQL) o a `{ error }` (HTTP). */
