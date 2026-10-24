@@ -28,8 +28,8 @@ export function loadConfig(
   const dev = 'http://localhost:5191'
   return {
     ports: {
-      public: Number(env.MYCHECKLIST_PORT ?? 4151),
-      tailnet: Number(env.MYCHECKLIST_TAILNET_PORT ?? 4153),
+      public: Number(env.MYCHECKLIST_PORT ?? 4161),
+      tailnet: Number(env.MYCHECKLIST_TAILNET_PORT ?? 4163),
     },
     origins: {
       public: env.MYCHECKLIST_PUBLIC_URL ?? dev,

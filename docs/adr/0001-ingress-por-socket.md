@@ -16,7 +16,7 @@ socket por el que llegó la request y viaja en el contexto de GraphQL y de Code 
 - Sessions, device codes y `api_tokens` guardan su `ingress`; un token emitido en la tailnet se rechaza en el
   listener público.
 - `server/db/scoped.ts` lanza `FORBIDDEN` si piden una org `team` con ingress público.
-- Puertos: público 4151/4152, tailnet 4153/4154 (blue/green).
+- Puertos: público 4161/4162, tailnet 4163/4164 (blue/green).
 
 ## Consecuencias
 

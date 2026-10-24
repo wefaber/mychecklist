@@ -12,14 +12,14 @@ vuelve sin recompilar.
 Cada slot levanta dos listeners en loopback (ADR 0001): público 4161/4162 y tailnet 4163/4164. El script exige que
 `/ready` responda en los dos antes de cambiar de slot.
 
-## Instalación única en el VPS (todavía no hecha)
+## Instalación única en el VPS (hecha 2026-10-23)
 
 `mychecklist.sh` corre un preflight de solo lectura antes de tocar nada: lista lo que falte de la lista de abajo (los
-números coinciden) y sale con 1, así un primer deploy en un VPS sin preparar falla con la lista y no con un error de
+números coinciden) y sale con 1, así un deploy en un VPS sin preparar falla con la lista y no con un error de
 systemd.
 
-1. Puertos libres: `ss -ltn | grep -E ':416[1-4]'` (4161-4164: dos por slot). 4151/4152 son de El Colectivo en este VPS:
-   por eso el plan arranca en 4161.
+1. Puertos libres: `ss -ltn | grep -E ':416[1-4]'`. **4151-4154 están tomados por Colectivo** en `167.114.2.210`,
+   por eso MyChecklist usa 4161-4164.
 2. `mkdir -p /home/hermes/mychecklist /home/hermes/data/mychecklist /home/hermes/deploy/state/mychecklist`
 3. `~/deploy/env/mychecklist.env` (los secretos viven acá, nunca en el repo). Variables:
 
@@ -28,12 +28,28 @@ systemd.
    | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | Credenciales de la GitHub App (ADR 0003). Sin ellas el login queda desactivado, el resto anda. |
    | `MYCHECKLIST_TOKEN_KEY`                    | Clave AES-256 de los tokens: `openssl rand -base64 32`. Sin clave el login falla cerrado.      |
    | `MYCHECKLIST_PUBLIC_URL`                   | `https://checklist.wefaber.net`. Arma el callback y activa cookies `Secure`.                   |
-   | `MYCHECKLIST_TAILNET_URL`                  | Origen https del vhost de la tailnet (paso 5).                                                 |
+   | `MYCHECKLIST_TAILNET_URL`                  | `http://vps-660e4a8c.tail7f613b.ts.net` (vhost de la tailnet, paso 5).                         |
 
    En la GitHub App, los dos callbacks: `<MYCHECKLIST_PUBLIC_URL>/auth/github/callback` y
    `<MYCHECKLIST_TAILNET_URL>/auth/github/callback`.
 
+   **Estado actual:** `MYCHECKLIST_PUBLIC_URL`, `MYCHECKLIST_TAILNET_URL` y `MYCHECKLIST_TOKEN_KEY` cargados;
+   `GITHUB_CLIENT_ID` y `GITHUB_CLIENT_SECRET` vacíos, así que el login está desactivado (`loginAvailable: false`)
+   hasta que se cree la GitHub App.
 4. `sudo cp deploy/mychecklist@.service /etc/systemd/system/ && sudo systemctl daemon-reload`
+<<<<<<< HEAD
+5. Nginx: `deploy/nginx/mychecklist.conf` en `sites-available` + symlink, DNS de `checklist.wefaber.net`
+   (CNAME proxied al apex, `~/deploy/cf-add-subdomain.py`), TLS con `certbot certonly --dns-cloudflare`
+   y un `snippets/mychecklist-active.conf` inicial (`set $mychecklist_port 4161;`,
+   `set $mychecklist_tailnet_port 4163;` y `set $mychecklist_root /home/hermes/mychecklist/blue/dist/web;`).
+   El vhost de la tailnet es `deploy/nginx/mychecklist-tailnet.conf`: escucha solo en `100.113.187.112:80` con
+   `server_name checklist.tail7f613b.ts.net`, en HTTP (un cert de `ts.net` requiere `tailscale cert` con HTTPS
+   habilitado en el tailnet).
+6. sudoers del usuario del runner (`hermes` tiene `NOPASSWD: ALL` en este VPS, el paso queda cubierto).
+7. Backup horario: `~/deploy/mychecklist-backup.sh` + `mychecklist-backup.{service,timer}`
+   (`sqlite3` no está instalado; el script usa `python3` + `VACUUM INTO`, verifica `integrity_check` y rota a 7 días).
+   Restauración: parar el slot, copiar el `.db` del backup sobre `~/data/mychecklist/mychecklist.db`, arrancar.
+=======
 5. Nginx: `deploy/nginx/mychecklist.conf` en `sites-available` + symlink, DNS de `checklist.wefaber.net`, TLS como los
    otros vhosts y un `snippets/mychecklist-active.conf` inicial (`set $mychecklist_port 4161;`,
    `set $mychecklist_tailnet_port 4163;` y `set $mychecklist_root /home/hermes/mychecklist/blue/dist/web;`).
@@ -43,6 +59,7 @@ systemd.
    `mychecklist@*` y `nginx`, `nginx -t` y `tee /etc/nginx/snippets/mychecklist-active.conf`.
 7. Backup horario: `sqlite3 /home/hermes/data/mychecklist/mychecklist.db "VACUUM INTO '/home/hermes/data/mychecklist/backups/$(date +%F-%H).db'"`
    (timer de systemd) y un simulacro de restauración antes de abrirlo.
+>>>>>>> origin/main
 
 ## Pendientes conocidos
 

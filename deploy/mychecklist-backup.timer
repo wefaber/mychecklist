@@ -1,0 +1,9 @@
+[Unit]
+Description=Backup horario de MyChecklist
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+
+[Install]
+WantedBy=timers.target

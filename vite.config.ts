@@ -27,12 +27,14 @@ export default defineConfig({
     strictPort: true,
     allowedHosts: ['.ts.net'],
     proxy: {
-      '/graphql': 'http://127.0.0.1:4151',
-      '/auth': 'http://127.0.0.1:4151',
-      '/events': 'http://127.0.0.1:4151',
-      '/files': 'http://127.0.0.1:4151',
-      '/health': 'http://127.0.0.1:4151',
-      '/ready': 'http://127.0.0.1:4151',
+      // 4151/4152 son de Colectivo en el VPS: el server de dev va en 4161 y coincide con el default de
+      // server/config.ts (blue).
+      '/graphql': 'http://127.0.0.1:4161',
+      '/auth': 'http://127.0.0.1:4161',
+      '/events': 'http://127.0.0.1:4161',
+      '/files': 'http://127.0.0.1:4161',
+      '/health': 'http://127.0.0.1:4161',
+      '/ready': 'http://127.0.0.1:4161',
     },
     watch: { ignored: ['**/src-tauri/**'] },
   },

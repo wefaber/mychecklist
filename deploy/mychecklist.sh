@@ -50,6 +50,7 @@ preflight() { # slot
   [[ -f $SNIPPET ]] || miss+=("5. nginx snippet missing: $SNIPPET (initial: set \$mychecklist_port 4161; set \$mychecklist_tailnet_port 4163; set \$mychecklist_root $BASE/blue/dist/web;)")
   # Every entry in sites-enabled is a symlink and `grep -r` does not follow symlinks found while walking a directory,
   # so it never matched and every deploy failed here. -f follows the link and skips the dangling ones.
+  local found=
   for vhost in /etc/nginx/sites-enabled/*; do
     if [[ -f $vhost ]] && grep -qs mychecklist-active.conf "$vhost"; then found=1; break; fi
   done
@@ -96,7 +97,10 @@ log "deploying $SHA into $IDLE (live is $ACTIVE)"
 $SYSTEMCTL stop "mychecklist@$IDLE" 2>/dev/null || true
 rm -rf "${BASE:?}/$IDLE"
 mkdir -p "$BASE/$IDLE"
-cp -r dist server shared package.json bun.lock tsconfig.json "$BASE/$IDLE/"
+# Solo lo que existe: `shared/` figura en tsconfig pero todavía no tiene archivos.
+copy=()
+for f in dist server shared package.json bun.lock tsconfig.json; do [[ -e $f ]] && copy+=("$f"); done
+cp -r "${copy[@]}" "$BASE/$IDLE/"
 ( cd "$BASE/$IDLE" && $BUN install --frozen-lockfile --production )
 echo "$SHA" >"$BASE/$IDLE/REVISION"
 

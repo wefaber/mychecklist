@@ -1,0 +1,7 @@
+[Unit]
+Description=MyChecklist SQLite backup (VACUUM INTO, rota 7 días)
+
+[Service]
+Type=oneshot
+User=hermes
+ExecStart=/home/hermes/deploy/mychecklist-backup.sh
