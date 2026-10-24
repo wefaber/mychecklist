@@ -181,7 +181,16 @@ export function createApp(db: Database, opts: AppOptions = {}) {
       } catch {
         return eventsError('FORBIDDEN', 403)
       }
-      return eventStream(bus, orgId, request.signal)
+      const user = { userId: viewer.id, ingress }
+      const stillAllowed = () => {
+        try {
+          getOrg(db, user, orgId)
+          return true
+        } catch {
+          return false
+        }
+      }
+      return eventStream(bus, orgId, request.signal, stillAllowed)
     })
     .post(
       '/files/:org',
@@ -329,6 +338,7 @@ const STATUS: Record<ErrorCode, number> = {
   INVALID_INPUT: 400,
   LIMIT_REACHED: 413,
   RATE_LIMITED: 429,
+  CONFLICT: 409,
 }
 
 const fileError = (code: ErrorCode, message: string) =>
@@ -376,7 +386,12 @@ const HEARTBEAT_MS = 25_000
  * Server-Sent Events de una org: un `change` por cada cambio (sin datos del contenido, el cliente vuelve a pedir por
  * GraphQL) y un comentario cada 25 s para que Nginx y los proxies no corten la conexión. `EventSource` reconecta solo.
  */
-function eventStream(bus: Bus, orgId: string, signal: AbortSignal): Response {
+function eventStream(
+  bus: Bus,
+  orgId: string,
+  signal: AbortSignal,
+  stillAllowed: () => boolean,
+): Response {
   const encoder = new TextEncoder()
   let cleanup = () => {}
   const body = new ReadableStream<Uint8Array>({
@@ -388,12 +403,22 @@ function eventStream(bus: Bus, orgId: string, signal: AbortSignal): Response {
           cleanup()
         }
       }
+      // Quien sale o es quitado de la org (M7) deja de recibir avisos: se verifica en cada aviso y en cada ping.
+      const sendIfAllowed = (chunk: string) => {
+        if (stillAllowed()) return send(chunk)
+        cleanup()
+        try {
+          controller.close()
+        } catch {
+          // Ya estaba cerrado.
+        }
+      }
       const unsubscribe = bus.subscribe(orgId, (e) =>
-        send(
+        sendIfAllowed(
           `event: change\ndata: ${JSON.stringify({ scope: e.scope, listId: e.listId ?? null })}\n\n`,
         ),
       )
-      const timer = setInterval(() => send(': ping\n\n'), HEARTBEAT_MS)
+      const timer = setInterval(() => sendIfAllowed(': ping\n\n'), HEARTBEAT_MS)
       cleanup = () => {
         clearInterval(timer)
         unsubscribe()

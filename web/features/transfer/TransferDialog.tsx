@@ -4,6 +4,7 @@ import { Download, LoaderCircle, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useUi } from '../../app/ui'
 import { t } from '../../i18n'
+import { useViewer } from '../auth/useViewer'
 import { useToast } from '../../lib/toast'
 import { downloadExport, uploadImport } from './transfer'
 
@@ -33,6 +34,8 @@ function TransferBody({ orgId }: { orgId: string }) {
   const [picked, setPicked] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const input = useRef<HTMLInputElement>(null)
+  // Importar es de quien administra (ADR 0009); exportar, de cualquier miembro.
+  const canImport = useViewer().org?.role !== 'member'
 
   const doExport = async () => {
     setBusy('export')
@@ -102,37 +105,39 @@ function TransferBody({ orgId }: { orgId: string }) {
         </div>
       </section>
 
-      <section aria-labelledby="tx-import" className="flex flex-col gap-2">
-        <h3 id="tx-import" className="text-body font-semibold">
-          {t('transfer.importTitle')}
-        </h3>
-        <p className="text-meta text-muted">{t('transfer.importHelp')}</p>
-        <input
-          ref={input}
-          type="file"
-          accept="application/json,.json"
-          aria-label={t('transfer.pick')}
-          className="text-body"
-          onChange={(e) => {
-            setPicked(e.target.files?.[0] ?? null)
-            setError(null)
-          }}
-        />
-        <div>
-          <Button
-            variant="primary"
-            onClick={doImport}
-            disabled={busy !== null || !picked}
-          >
-            {busy === 'import' ? (
-              <LoaderCircle aria-hidden size={14} />
-            ) : (
-              <Upload aria-hidden size={14} />
-            )}
-            {t('transfer.import')}
-          </Button>
-        </div>
-      </section>
+      {canImport ? (
+        <section aria-labelledby="tx-import" className="flex flex-col gap-2">
+          <h3 id="tx-import" className="text-body font-semibold">
+            {t('transfer.importTitle')}
+          </h3>
+          <p className="text-meta text-muted">{t('transfer.importHelp')}</p>
+          <input
+            ref={input}
+            type="file"
+            accept="application/json,.json"
+            aria-label={t('transfer.pick')}
+            className="text-body"
+            onChange={(e) => {
+              setPicked(e.target.files?.[0] ?? null)
+              setError(null)
+            }}
+          />
+          <div>
+            <Button
+              variant="primary"
+              onClick={doImport}
+              disabled={busy !== null || !picked}
+            >
+              {busy === 'import' ? (
+                <LoaderCircle aria-hidden size={14} />
+              ) : (
+                <Upload aria-hidden size={14} />
+              )}
+              {t('transfer.import')}
+            </Button>
+          </div>
+        </section>
+      ) : null}
 
       {error ? (
         <p role="alert" className="text-meta text-danger">

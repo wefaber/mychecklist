@@ -149,6 +149,18 @@ export function countActiveApiTokens(
     .get(userId, orgId, now)!.n
 }
 
+/** Revoca todos los tokens vigentes de una persona en una org (al salir o ser quitada de ella). */
+export function revokeApiTokensIn(
+  db: Database,
+  userId: string,
+  orgId: string,
+  now: number,
+) {
+  db.query(
+    'UPDATE api_tokens SET revoked_at = ? WHERE user_id = ? AND org_id = ? AND revoked_at IS NULL',
+  ).run(now, userId, orgId)
+}
+
 /** Revoca un token propio; `false` si no existe, no es del usuario o ya estaba revocado. */
 export function revokeApiToken(
   db: Database,

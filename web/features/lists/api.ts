@@ -127,10 +127,16 @@ export function useOrgEvents(orgId: string | null) {
     }
     source.addEventListener('change', (e) => {
       const data = JSON.parse((e as MessageEvent<string>).data) as {
-        scope: 'lists' | 'list'
+        scope: 'lists' | 'list' | 'members'
         listId: string | null
       }
-      if (data.scope === 'lists')
+      if (data.scope === 'members') {
+        // Cambió quién está y con qué rol; mi propio rol también puede haber cambiado.
+        void client.invalidateQueries({ queryKey: ['members', orgId] })
+        void client.invalidateQueries({ queryKey: ['org-invitations', orgId] })
+        void client.invalidateQueries({ queryKey: ['my-invitations'] })
+        void client.invalidateQueries({ queryKey: ['me'] })
+      } else if (data.scope === 'lists')
         void client.invalidateQueries({ queryKey: ['lists', orgId] })
       else {
         // Un cambio en una lista puede mover el título de un chip o un backlink en cualquier otra: se pide todo lo que

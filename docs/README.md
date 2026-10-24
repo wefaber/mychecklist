@@ -12,6 +12,7 @@
 | [adr/0006-links-a-github.md](adr/0006-links-a-github.md)                                       | Links a GitHub: caché y tokens                          |
 | [adr/0007-api-tokens-y-limites-de-code-mode.md](adr/0007-api-tokens-y-limites-de-code-mode.md) | Tokens de API, alcance por org y límites de Code Mode   |
 | [adr/0008-exportar-e-importar.md](adr/0008-exportar-e-importar.md)                             | Formato del export, ids al importar y adjuntos          |
+| [adr/0009-organizaciones-de-equipo.md](adr/0009-organizaciones-de-equipo.md)                   | Orgs de equipo: invitaciones por login y roles          |
 | [fixes-2026-10-23-v0.1.0/](fixes-2026-10-23-v0.1.0/README.md)                                  | Hallazgos de M0                                         |
 | [fixes-2026-10-23-v0.2.0/](fixes-2026-10-23-v0.2.0/README.md)                                  | Hallazgos y pendientes de M1                            |
 | [fixes-2026-10-23-v0.3.0/](fixes-2026-10-23-v0.3.0/README.md)                                  | Hallazgos y pendientes de M2                            |
@@ -19,6 +20,7 @@
 | [fixes-2026-10-23-v0.5.0/](fixes-2026-10-23-v0.5.0/README.md)                                  | Hallazgos y pendientes de M6                            |
 | [fixes-2026-10-23-v0.6.0/](fixes-2026-10-23-v0.6.0/README.md)                                  | Hallazgos y pendientes de M5                            |
 | [fixes-2026-10-23-v0.7.0/](fixes-2026-10-23-v0.7.0/README.md)                                  | Hallazgos y pendientes de M4                            |
+| [fixes-2026-10-24-v0.8.0/](fixes-2026-10-24-v0.8.0/README.md)                                  | Hallazgos y pendientes de M7                            |
 | `fixes-<fecha>-v<versión>/`                                                                    | Correcciones y mejoras en lote, con checkbox por ítem   |
 
 Los ADR aceptados no se editan: se reemplazan con uno nuevo que los marca como superados.

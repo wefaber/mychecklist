@@ -39,7 +39,8 @@ jobs     ┘
 | Links a GitHub                                                                                  | M4 (hecho) |
 | Code Mode completo (`/codemode/*`, `/mcp`)                                                      | M5 (hecho) |
 | Importar y exportar                                                                             | M6 (hecho) |
-| Orgs de equipo, desktop completo, Ether                                                         | M7–M9      |
+| Orgs de equipo: invitaciones y roles                                                            | M7 (hecho) |
+| Desktop completo, Ether                                                                         | M8–M9      |
 
 ## Identidad y acceso (M1)
 
@@ -162,6 +163,28 @@ jobs     ┘
   sirve acá ni el Bearer en `/graphql`. Nginx proxea `/codemode/` y `/mcp` en los dos vhosts (cuerpo de hasta 64 KB).
 - **Ergonomía**: en `lists.create`, `items.create` y los `move`, `afterId` omitido es "al final" y `null` "al principio".
   Los errores del host llegan al código como `Error` con `message` `CODIGO: texto`.
+
+## Organizaciones de equipo (M7)
+
+- **Modelo** (ADR 0009): `orgs.kind = 'team'` con `org_members.role` (`owner`, `admin`, `member`) e `org_invitations`
+  (`login` de GitHub en minúsculas, rol `admin` o `member`, vence a los 14 días, una vigente por `(org, login)`). Ninguna
+  de las dos tablas es "con dueño" de `scoped.ts`: la persona invitada todavía no es miembro. Todo el SQL está en
+  `server/db/members.ts` y cada servicio de `server/services/members.ts` abre `openScope` (membresía y puerta) antes.
+- **Roles:** `member` lee y escribe y exporta; `admin` además invita y quita `member`, revoca invitaciones de `member`,
+  crea tokens de API e importa; `owner` además invita `admin`, cambia roles y quita a cualquiera. Siempre queda al menos
+  un `owner` (`CONFLICT`). Nadie se quita a sí mismo: `leaveOrg`. Salir o ser quitado revoca los tokens de API de esa
+  persona en esa org.
+- **Puerta:** crear una org, invitar, aceptar y ver invitaciones son solo de la tailnet. Por el listener público
+  `User.invitations` da vacío y las mutaciones dan `FORBIDDEN`. `Query.ingress` le dice al cliente por cuál mira.
+- **API:** `createTeamOrg`, `inviteMember`, `revokeInvitation`, `acceptInvitation`, `declineInvitation`, `setMemberRole`,
+  `removeMember`, `leaveOrg`; `Org.members`, `Org.invitations` (solo `owner` y `admin`) y `User.invitations`. No hay
+  operaciones de miembros en Code Mode: administrar gente es de sesión, no de agentes.
+- **Avisos:** los cambios publican `scope: 'members'` en el bus. El stream SSE verifica la membresía en cada aviso y en
+  cada ping y se cierra para quien ya no pertenece.
+- **Cliente:** la org en pantalla se recuerda en `localStorage` (`mychecklist.org`) y cae a la personal si ya no
+  pertenece a ella (`web/features/orgs/active.ts`). `OrgMenu` en la barra superior (solo si hay algo que elegir o crear)
+  y la pantalla `/equipo` para crear, invitar, aceptar y administrar.
+- **Límites:** 50 miembros y 50 invitaciones vigentes por org; 10 orgs de equipo como creador.
 
 ## Red y puertos
 
