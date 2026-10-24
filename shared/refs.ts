@@ -96,3 +96,138 @@ export function extractRefs(text: string): string[] {
   rewrite(parser.parse(text), (id) => found.add(id))
   return [...found].slice(0, MAX_REFS)
 }
+
+/** Esquema de la URL de un adjunto en el texto: `attachment:<id>` (ADR 0005). */
+export const ATTACHMENT_PROTOCOL = 'attachment:'
+
+export type IdMaps = {
+  /** Id viejo → id nuevo de los items. */
+  items: ReadonlyMap<string, string>
+  /** Id viejo → id nuevo de los adjuntos. */
+  attachments: ReadonlyMap<string, string>
+}
+
+type Edit = { start: number; end: number; value: string }
+
+// `[[id]]` tal como puede estar escrito en la fuente: Markdown permite `\[` y `\]`, que el parser resuelve antes de que
+// `splitRefs` vea el texto (ADR 0005: no hay escape con backslash).
+const SOURCE_REF = new RegExp(
+  String.raw`(?:\\?\[){2}(${ULID})(?:\\?\]){2}`,
+  'g',
+)
+
+/**
+ * Cambia los ids que lleva un texto Markdown (`[[id]]`, `item:<id>` y `attachment:<id>`) según `maps`, tocando solo lo
+ * que el parser considera referencia: el código y el interior de links quedan como están, igual que en `extractRefs`.
+ * Un id que no está en el mapa se deja como estaba. Se edita la fuente por posición, así el resto del texto no cambia
+ * ni un byte. `unmatched` cuenta las referencias que el parser vio pero no se pudieron ubicar en la fuente (entidades
+ * raras): esas quedan sin tocar.
+ */
+export function remapIds(
+  text: string,
+  maps: IdMaps,
+): { text: string; unmatched: number } {
+  const edits: Edit[] = []
+  let unmatched = 0
+
+  /** Reemplaza `<scheme><oldId>` dentro de `[from, to)` de la fuente; `last` busca desde el final (imágenes). */
+  const swapUrl = (
+    scheme: string,
+    oldId: string,
+    newId: string,
+    from: number,
+    to: number,
+    last = false,
+  ) => {
+    const needle = `${scheme}${oldId}`
+    const slice = text.slice(from, to)
+    const at = last ? slice.lastIndexOf(needle) : slice.indexOf(needle)
+    if (at < 0) {
+      unmatched++
+      return
+    }
+    const start = from + at + scheme.length
+    edits.push({ start, end: start + oldId.length, value: newId })
+  }
+
+  const url = (
+    node: { url: string; position?: Parent['position'] },
+    after: number,
+    last: boolean,
+  ) => {
+    const pos = node.position
+    if (!pos || pos.start.offset == null || pos.end.offset == null) return
+    const itemId = refIdOf(node.url)
+    const attId = node.url.startsWith(ATTACHMENT_PROTOCOL)
+      ? node.url.slice(ATTACHMENT_PROTOCOL.length)
+      : null
+    const newItem = itemId ? maps.items.get(itemId) : undefined
+    const newAtt = attId ? maps.attachments.get(attId) : undefined
+    const from = Math.max(after, pos.start.offset)
+    if (itemId && newItem)
+      swapUrl(REF_PROTOCOL, itemId, newItem, from, pos.end.offset, last)
+    else if (attId && newAtt)
+      swapUrl(ATTACHMENT_PROTOCOL, attId, newAtt, from, pos.end.offset, last)
+  }
+
+  const walk = (node: Parent) => {
+    for (const child of node.children) {
+      switch (child.type) {
+        case 'text': {
+          const refs = splitRefs(child.value).filter(
+            (p): p is { ref: string } => typeof p !== 'string',
+          )
+          if (!refs.some((r) => maps.items.has(r.ref))) break
+          const pos = child.position
+          if (!pos || pos.start.offset == null || pos.end.offset == null) {
+            unmatched += refs.length
+            break
+          }
+          const base = pos.start.offset
+          const found = [
+            ...text.slice(base, pos.end.offset).matchAll(SOURCE_REF),
+          ]
+          if (
+            found.length !== refs.length ||
+            found.some((m, i) => m[1] !== refs[i]!.ref)
+          ) {
+            unmatched += refs.length
+            break
+          }
+          found.forEach((m, i) => {
+            const next = maps.items.get(refs[i]!.ref)
+            if (!next) return
+            const start = base + m.index + m[0].indexOf(m[1]!)
+            edits.push({ start, end: start + m[1]!.length, value: next })
+          })
+          break
+        }
+        case 'link': {
+          // El destino viene después del texto del link: se busca desde donde terminan sus hijos.
+          const after = child.children.reduce(
+            (max, c) => Math.max(max, c.position?.end.offset ?? 0),
+            0,
+          )
+          url(child, after, false)
+          break
+        }
+        case 'image':
+          url(child, 0, true)
+          break
+        case 'definition':
+          url(child, 0, false)
+          break
+        case 'linkReference':
+          break
+        default:
+          if ('children' in child) walk(child as Parent)
+      }
+    }
+  }
+
+  walk(parser.parse(text))
+  let out = text
+  for (const e of edits.sort((a, b) => b.start - a.start))
+    out = out.slice(0, e.start) + e.value + out.slice(e.end)
+  return { text: out, unmatched }
+}

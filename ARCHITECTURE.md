@@ -38,7 +38,8 @@ jobs     ┘
 | Markdown, backlinks, adjuntos                                                                   | M3 (hecho) |
 | Links a GitHub                                                                                  | M4 (hecho) |
 | Code Mode completo (`/codemode/*`, `/mcp`)                                                      | M5 (hecho) |
-| Import/Export, orgs de equipo, desktop completo, Ether                                          | M6–M9      |
+| Importar y exportar                                                                             | M6 (hecho) |
+| Orgs de equipo, desktop completo, Ether                                                         | M7–M9      |
 
 ## Identidad y acceso (M1)
 
@@ -124,6 +125,19 @@ jobs     ┘
   sirve acá ni el Bearer en `/graphql`. Nginx proxea `/codemode/` y `/mcp` en los dos vhosts (cuerpo de hasta 64 KB).
 - **Ergonomía**: en `lists.create`, `items.create` y los `move`, `afterId` omitido es "al final" y `null` "al principio".
   Los errores del host llegan al código como `Error` con `message` `CODIGO: texto`.
+
+## Importar y exportar (M6)
+
+- **Formato:** un JSON con `format: "mychecklist"` y `schema` entero (ADR 0008): listas con sus items en orden de árbol,
+  borrados lógicos incluidos, y adjuntos en base64. Sin `activity`, sin `item_refs` (se recalcula) y sin autoría.
+- **Servicio:** `server/services/transfer.ts` (`exportOrg`, `importOrg`) y `transfer-format.ts` (tipos y validación).
+  Importar siempre agrega, valida todo antes de escribir y mete listas, items, referencias y registros de adjuntos en una
+  sola transacción. Los ids se regeneran y `shared/refs.ts › remapIds` reescribe `[[id]]`, `item:<id>` y `attachment:<id>`
+  en los textos por posición, con el mismo recorrido de Markdown que las referencias.
+- **HTTP:** `GET /export/:org` (descarga; `?attachments=0` va sin contenido) y `POST /import/:org` (JSON crudo). Sesión de la
+  puerta, membresía y, en el POST, `Origin` propio.
+- **Límites:** 32 MB de adjuntos por export, 48 MB de cuerpo por import, 1000 listas y 100 000 items por archivo.
+- **Nginx:** `location /export/` y `location /import/` (`client_max_body_size 48m`) en los dos vhosts.
 
 ## Red y puertos
 

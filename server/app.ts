@@ -2,6 +2,7 @@ import type { Database } from 'bun:sqlite'
 import { Elysia } from 'elysia'
 import { GraphQLError } from 'graphql'
 import { createYoga, maskError, type Plugin } from 'graphql-yoga'
+import { devLoginRoute } from './auth/dev'
 import { authRoutes } from './auth/routes'
 import { parseCookies, sessionCookieName } from './auth/cookies'
 import type { GithubClient } from './auth/github'
@@ -11,6 +12,7 @@ import { migrationsApplied } from './db/migrate'
 import { findSessionUser } from './db/sessions'
 import { DomainError, type ErrorCode } from './errors'
 import { fileStore, readCapped, type FileStore } from './files'
+import { MAX_IMPORT_BYTES } from '../shared/limits'
 import { createBus, type Bus } from './events'
 import type { Ingress } from './ingress'
 import { maxDepth } from './graphql/limits'
@@ -26,6 +28,7 @@ import {
 } from './services/attachments'
 import { createGithubLinks, type GithubLinks } from './services/github'
 import { getOrg } from './services/orgs'
+import { exportOrg, importOrg } from './services/transfer'
 
 const MAX_DEPTH = 8
 const MAX_QUERY_CHARS = 4000
@@ -144,6 +147,7 @@ export function createApp(db: Database, opts: AppOptions = {}) {
         limits: opts.codemodeLimits,
       }),
     )
+    .use(devLoginRoute({ db, ingress, config, now }))
     .get('/health', () => ({ status: 'ok' }))
     .get('/ready', ({ set }) => {
       let ready = false
@@ -224,6 +228,65 @@ export function createApp(db: Database, opts: AppOptions = {}) {
         return fileFailure(error)
       }
     })
+    .get('/export/:org', async ({ request, params, query }) => {
+      const viewer = viewerOf(request)
+      if (!viewer) return fileError('UNAUTHENTICATED', 'Hay que iniciar sesión')
+      try {
+        const at = now()
+        const file = await exportOrg(
+          { db, files },
+          { userId: viewer.id, ingress, via: 'web' },
+          {
+            orgId: params.org,
+            attachments: query.attachments !== '0',
+            version: process.env.APP_VERSION,
+          },
+          at,
+        )
+        return new Response(JSON.stringify(file), {
+          headers: {
+            'content-type': 'application/json; charset=utf-8',
+            'content-disposition': `attachment; ${dispositionName(exportName(file.org.name, at))}`,
+            'cache-control': 'no-store',
+            'x-content-type-options': 'nosniff',
+          },
+        })
+      } catch (error) {
+        return fileFailure(error)
+      }
+    })
+    .post(
+      '/import/:org',
+      async ({ request, params }) => {
+        if (!originOk(request))
+          return fileError('FORBIDDEN', 'Origen no permitido')
+        const viewer = viewerOf(request)
+        if (!viewer)
+          return fileError('UNAUTHENTICATED', 'Hay que iniciar sesión')
+        try {
+          const bytes = await readCapped(request, MAX_IMPORT_BYTES)
+          let payload: unknown
+          try {
+            payload = JSON.parse(new TextDecoder().decode(bytes))
+          } catch {
+            throw new DomainError(
+              'INVALID_INPUT',
+              'El archivo no es un JSON válido',
+            )
+          }
+          const result = await importOrg(
+            { db, files, bus },
+            { userId: viewer.id, ingress, via: 'import' },
+            { orgId: params.org, payload },
+            now(),
+          )
+          return Response.json({ result }, { status: 201 })
+        } catch (error) {
+          return fileFailure(error)
+        }
+      },
+      { parse: 'none' },
+    )
     .all(
       '/graphql',
       ({ request }) =>
@@ -273,6 +336,17 @@ function decodeName(raw: string | null): string {
   } catch {
     return ''
   }
+}
+
+/** `mychecklist-<org>-<fecha>.json`, solo con caracteres seguros para un nombre de archivo. */
+function exportName(orgName: string, at: number): string {
+  const slug = orgName
+    .normalize('NFKD')
+    .replace(/[^\w]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase()
+    .slice(0, 40)
+  return `mychecklist-${slug || 'org'}-${new Date(at).toISOString().slice(0, 10)}.json`
 }
 
 /** `filename*` (RFC 5987) lleva el nombre real; `filename` es una versión ASCII para clientes viejos. */

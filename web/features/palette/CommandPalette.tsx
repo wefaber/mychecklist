@@ -48,6 +48,7 @@ function PaletteBody({
   close: () => void
 }) {
   const navigate = useNavigate()
+  const setTransfer = useUi((s) => s.setTransfer)
   const lists = useLists(orgId).data ?? []
   const shortcuts = useRegistry((s) => s.shortcuts)
   const theme = useTheme()
@@ -88,6 +89,12 @@ function PaletteBody({
       run: done(s.run),
     }))
   commands.push(
+    {
+      id: 'cmd-transfer',
+      group: 'palette.commands',
+      label: t('cmd.transfer'),
+      run: done(() => setTransfer(true)),
+    },
     {
       id: 'cmd-design',
       group: 'palette.commands',

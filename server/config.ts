@@ -12,6 +12,8 @@ export type Config = {
   filesDir: string
   /** Clave AES-256 de los tokens guardados. Sin clave, el login falla cerrado. */
   tokenKey: Uint8Array | null
+  /** Solo desarrollo: habilita `GET /auth/dev` (sesión de prueba sin GitHub). Nunca en producción. */
+  devLogin: boolean
 }
 
 function decodeKey(raw: string): Uint8Array {
@@ -40,6 +42,8 @@ export function loadConfig(
     filesDir:
       env.MYCHECKLIST_FILES ??
       join(dirname(env.MYCHECKLIST_DB ?? './data/mychecklist.db'), 'files'),
+    devLogin:
+      env.MYCHECKLIST_DEV_LOGIN === '1' && env.NODE_ENV !== 'production',
     github: clientId && clientSecret ? { clientId, clientSecret } : null,
     githubApp:
       env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY

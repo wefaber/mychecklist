@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'bun:test'
-import { extractRefs, MAX_REFS, refIdOf, refUrl, splitRefs } from './refs'
+import {
+  extractRefs,
+  MAX_REFS,
+  refIdOf,
+  refUrl,
+  remapIds,
+  splitRefs,
+} from './refs'
 
 const A = '01JC8Q2V3N4M5P6R7S8T9VWXYZ'
 const B = '01JC8Q2V3N4M5P6R7S8T9VWXY0'
@@ -117,5 +124,56 @@ describe('refUrl / refIdOf', () => {
     expect(refIdOf('item:corto')).toBeNull()
     expect(refIdOf(`item:${A}/extra`)).toBeNull()
     expect(refIdOf(`javascript:${A}`)).toBeNull()
+  })
+})
+
+describe('remapIds', () => {
+  const NEW_A = '01JD000000000000000000000A'
+  const NEW_B = '01JD000000000000000000000B'
+  const FILE = '01JC9ZZZZZZZZZZZZZZZZZZZZZ'
+  const NEW_FILE = '01JD000000000000000000000F'
+  const maps = {
+    items: new Map([
+      [A, NEW_A],
+      [B, NEW_B],
+    ]),
+    attachments: new Map([[FILE, NEW_FILE]]),
+  }
+
+  test('reescribe menciones, links item: y adjuntos sin tocar el resto', () => {
+    const text = `ver [[${A}]] y [dos](item:${B}) con ![foto](attachment:${FILE}) y [doc](attachment:${FILE} "t")`
+    const out = remapIds(text, maps)
+    expect(out.unmatched).toBe(0)
+    expect(out.text).toBe(
+      `ver [[${NEW_A}]] y [dos](item:${NEW_B}) con ![foto](attachment:${NEW_FILE}) y [doc](attachment:${NEW_FILE} "t")`,
+    )
+  })
+
+  test('no toca código ni el interior de links, igual que extractRefs', () => {
+    const text = `\`[[${A}]]\`\n\n\`\`\`\n[[${A}]]\n\`\`\`\n\n[texto [[${A}]]](https://x.y)`
+    expect(remapIds(text, maps)).toEqual({ text, unmatched: 0 })
+  })
+
+  test('el texto del link que repite el destino no confunde', () => {
+    const text = `[item:${A}](item:${A})`
+    expect(remapIds(text, maps).text).toBe(`[item:${A}](item:${NEW_A})`)
+  })
+
+  test('ids fuera del mapa quedan como están', () => {
+    const other = '01JC8Q2V3N4M5P6R7S8T9VWXY1'
+    const text = `[[${other}]] y ![x](attachment:${other})`
+    expect(remapIds(text, maps)).toEqual({ text, unmatched: 0 })
+  })
+
+  test('entidades y escapes antes de la mención no corren la posición', () => {
+    const text = `a &amp; b \\* c [[${A}]] y &copy; [[${B}]]`
+    const out = remapIds(text, maps)
+    expect(out.unmatched).toBe(0)
+    expect(out.text).toBe(`a &amp; b \\* c [[${NEW_A}]] y &copy; [[${NEW_B}]]`)
+  })
+
+  test('lo que el parser lee de la salida coincide con el mapa', () => {
+    const text = `- [[${A}]]\n- otro con [[${B}]] y [[${A}]]\n\n> [[${B}]]`
+    expect(extractRefs(remapIds(text, maps).text)).toEqual([NEW_A, NEW_B])
   })
 })

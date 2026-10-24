@@ -200,6 +200,23 @@ export const es = {
   'toast.itemDeleted': 'Item borrado.',
   'toast.dismiss': 'Cerrar el aviso',
   'error.fileTooBig': 'El archivo pesa más de 10 MB. Probá con uno más chico.',
+  'transfer.title': 'Importar y exportar',
+  'transfer.exportTitle': 'Exportar',
+  'transfer.exportHelp':
+    'Baja un archivo JSON con tus listas, items, orden, estado, menciones y adjuntos. Incluye también lo que borraste y todavía se puede restaurar.',
+  'transfer.withFiles': 'Incluir los adjuntos',
+  'transfer.export': 'Exportar',
+  'transfer.exported': 'Se descargó el archivo de exportación.',
+  'transfer.importTitle': 'Importar',
+  'transfer.importHelp':
+    'Suma al final lo que trae un archivo exportado. No cambia ni borra nada de lo que ya tenés.',
+  'transfer.pick': 'Archivo de exportación',
+  'transfer.import': 'Importar',
+  'transfer.imported': 'Se importaron {lists} listas y {items} items.',
+  'transfer.partial':
+    'Quedaron {files} adjuntos sin contenido y {refs} referencias sin reescribir.',
+  'transfer.tooBig': 'El archivo es demasiado grande para importarlo.',
+  'cmd.transfer': 'Importar o exportar tus listas',
   'error.generic': 'No se pudo completar la acción. Probá de nuevo.',
 
   'tokens.link': 'Tokens de API',
