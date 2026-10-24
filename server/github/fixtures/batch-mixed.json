@@ -1,0 +1,71 @@
+{
+  "data": {
+    "r0": {
+      "isPrivate": false,
+      "i0": {
+        "__typename": "Issue",
+        "title": "Abrir el detalle con Enter",
+        "state": "OPEN",
+        "stateReason": null
+      },
+      "i1": {
+        "__typename": "Issue",
+        "title": "Soporte para Windows 7",
+        "state": "CLOSED",
+        "stateReason": "NOT_PLANNED"
+      },
+      "i2": {
+        "__typename": "PullRequest",
+        "title": "feat(m3): Markdown y backlinks",
+        "state": "MERGED",
+        "isDraft": false,
+        "merged": true
+      },
+      "i3": {
+        "__typename": "Issue",
+        "title": "Resuelto",
+        "state": "CLOSED",
+        "stateReason": "COMPLETED"
+      }
+    },
+    "r1": {
+      "isPrivate": true,
+      "i0": {
+        "__typename": "PullRequest",
+        "title": "wip: importar desde Todoist",
+        "state": "OPEN",
+        "isDraft": true,
+        "merged": false
+      },
+      "i1": {
+        "__typename": "PullRequest",
+        "title": "Revisar permisos",
+        "state": "OPEN",
+        "isDraft": false,
+        "merged": false
+      },
+      "i2": {
+        "__typename": "PullRequest",
+        "title": "Descartado",
+        "state": "CLOSED",
+        "isDraft": false,
+        "merged": false
+      }
+    },
+    "r2": null,
+    "r3": { "isPrivate": false, "i0": null },
+    "rateLimit": { "remaining": 4987, "resetAt": "2026-10-23T18:00:00Z" }
+  },
+  "errors": [
+    {
+      "type": "NOT_FOUND",
+      "path": ["r2"],
+      "message": "Could not resolve to a Repository with the name 'nadie/nada'."
+    },
+    {
+      "type": "NOT_FOUND",
+      "path": ["r3", "i0"],
+      "message": "Could not resolve to an issue or pull request with the number of 99."
+    }
+  ]
+}

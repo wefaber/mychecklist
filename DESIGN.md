@@ -49,6 +49,11 @@ tableros. Detalle del item en `Dock` a la derecha. Filtros siempre sobre el cont
   **Vista** renderizada debajo, con links activos, imágenes, tablas, casillas y chips que abren el item mencionado.
 - **Chip de mención:** título del item con ícono de casilla y tachado si está completado (nunca solo color). Un item que
   ya no existe se ve "Item no disponible", en cursiva y con ícono, sin dato clicable.
+- **Chip de GitHub:** una URL de issue o PR pegada suelta se dibuja como chip con ícono de tipo y estado (issue abierto,
+  cerrado, cerrado como no planeado; PR abierto, borrador, mergeado, cerrado), `repo#n` y el título truncado. El estado
+  también va en texto para lectores de pantalla, nunca solo en el ícono ni en el color. Sin dato (cargando, sin acceso,
+  sin conexión) queda `repo#n` en `--muted` con el motivo en texto. En una fila es inerte; en el detalle es un link a
+  GitHub en otra pestaña. Un `[texto](url)` con texto propio sigue siendo un link normal.
 - **Links:** el color del texto con subrayado grueso en `--accent`. El texto en `--accent` sobre `--surface-2` no llega a
   4,5:1 en Azul claro.
 - **Títulos dentro de un item:** siempre `h4`, un nivel debajo de las secciones del detalle, para no romper el esquema

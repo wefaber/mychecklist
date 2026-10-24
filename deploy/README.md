@@ -29,6 +29,14 @@ systemd.
    | `MYCHECKLIST_TOKEN_KEY`                    | Clave AES-256 de los tokens: `openssl rand -base64 32`. Sin clave el login falla cerrado.      |
    | `MYCHECKLIST_PUBLIC_URL`                   | `https://checklist.wefaber.net`. Arma el callback y activa cookies `Secure`.                   |
    | `MYCHECKLIST_TAILNET_URL`                  | `http://vps-660e4a8c.tail7f613b.ts.net` (vhost de la tailnet, paso 5).                         |
+   | `GITHUB_APP_ID`                            | Id de la GitHub App (Settings › Developer settings › GitHub Apps › _About_). Links a GitHub (ADR 0006). |
+   | `GITHUB_APP_PRIVATE_KEY`                   | Clave privada de la App (`.pem`), con los saltos de línea como `\n` literales en una sola línea. |
+
+   `GITHUB_APP_ID` y `GITHUB_APP_PRIVATE_KEY` son opcionales y van juntas: con ellas el servidor firma un JWT de la App y
+   consulta lo público con un token de instalación de solo lectura (permisos _Issues_ y _Pull requests_: _Read_). La App
+   tiene que estar instalada en al menos una cuenta. Sin ellas los links a repos públicos igual se resuelven, con el
+   token de quien mira. La clave privada es un secreto: si se filtra, se rota desde la configuración de la App. Para
+   ponerla en una línea: `awk 'NF {printf "%s\\n", $0}' clave.pem`.
 
    En la GitHub App, los dos callbacks: `<MYCHECKLIST_PUBLIC_URL>/auth/github/callback` y
    `<MYCHECKLIST_TAILNET_URL>/auth/github/callback`.

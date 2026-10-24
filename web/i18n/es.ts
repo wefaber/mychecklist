@@ -114,6 +114,16 @@ export const es = {
   'md.taskDone': 'marcado',
   'md.taskOpen': 'sin marcar',
 
+  'gh.issue.open': 'Issue abierto',
+  'gh.issue.closed': 'Issue cerrado',
+  'gh.issue.notPlanned': 'Issue cerrado como no planeado',
+  'gh.pull.open': 'Pull request abierto',
+  'gh.pull.draft': 'Pull request en borrador',
+  'gh.pull.merged': 'Pull request mergeado',
+  'gh.pull.closed': 'Pull request cerrado sin mergear',
+  'gh.notFound': 'No existe o no tenés acceso',
+  'gh.unavailable': 'Estado no disponible',
+
   'palette.title': 'Paleta de comandos',
   'palette.label': 'Buscar comandos, listas e items',
   'palette.placeholder': 'Escribí un comando o buscá un item',
@@ -272,8 +282,9 @@ export const es = {
   'design.sampleDone': 'Llamar al contador',
   'design.sampleSub': 'Pedir el presupuesto',
   'design.sampleMarkdown':
-    '#### Un título\n\nTexto con **negrita**, _énfasis_, `código` y un [link](https://example.com). Depende de [[{open}]] y sigue lo de [[{done}]].\n\n- [x] Una casilla marcada\n- [ ] Una casilla pendiente\n\n| Columna | Valor |\n| - | - |\n| Uno | 1 |\n\n> Una cita corta.',
-  'design.sampleMarkdownRow': 'Revisar con **cuidado** lo de [[{open}]]',
+    '#### Un título\n\nTexto con **negrita**, _énfasis_, `código` y un [link](https://example.com). Depende de [[{open}]] y sigue lo de [[{done}]].\n\nVer {issue}\n\nVer también {pull}\n\n- [x] Una casilla marcada\n- [ ] Una casilla pendiente\n\n| Columna | Valor |\n| - | - |\n| Uno | 1 |\n\n> Una cita corta.',
+  'design.sampleMarkdownRow':
+    'Revisar con **cuidado** lo de [[{open}]] y {pull}',
   'design.sampleEmpty': 'Un estado vacío dice qué hacer.',
 } as const
 
