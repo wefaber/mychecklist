@@ -161,7 +161,7 @@ function CreateTeam() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const value = name.trim()
-    if (!value) return
+    if (!value || create.isPending) return
     try {
       const made = await create.mutateAsync(value)
       setOrg(made.id)
@@ -376,7 +376,7 @@ function Invite({ orgId, role }: { orgId: string; role: OrgRole }) {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const value = login.trim().replace(/^@/, '')
-    if (!value) return
+    if (!value || invite.isPending) return
     try {
       await invite.mutateAsync({
         login: value,
