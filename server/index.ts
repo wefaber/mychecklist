@@ -6,6 +6,7 @@ import { loadConfig } from './config'
 import { openDb } from './db/connection'
 import { migrate } from './db/migrate'
 import { createBus } from './events'
+import { createLimiter } from './mcp/limiter'
 import { INGRESSES } from './ingress'
 
 const path = process.env.MYCHECKLIST_DB ?? './data/mychecklist.db'
@@ -23,10 +24,11 @@ if (!github || !config.tokenKey)
   )
 
 const bus = createBus()
+const limiter = createLimiter()
 
 // Un listener por puerta, ambos en loopback: Nginx es lo único que ve la red (ARCHITECTURE.md › Network, ADR 0001).
 for (const ingress of INGRESSES) {
-  createApp(db, { ingress, config, github, bus, dev }).listen({
+  createApp(db, { ingress, config, github, bus, limiter, dev }).listen({
     hostname: '127.0.0.1',
     port: config.ports[ingress],
   })

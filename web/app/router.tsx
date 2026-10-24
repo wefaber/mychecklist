@@ -8,6 +8,7 @@ import {
 import { useEffect } from 'react'
 import { useViewer } from '../features/auth/useViewer'
 import { ListPage } from '../features/lists/ListPage'
+import { TokensPage } from '../features/tokens/TokensPage'
 import { CommandPalette } from '../features/palette/CommandPalette'
 import { ShortcutsDialog } from '../features/palette/ShortcutsDialog'
 import { TransferDialog } from '../features/transfer/TransferDialog'
@@ -41,6 +42,11 @@ function ListRoute() {
   return orgId ? <ListPage orgId={orgId} listId={listId} itemId={item} /> : null
 }
 
+function TokensRoute() {
+  const { orgId } = useViewer()
+  return orgId ? <TokensPage orgId={orgId} /> : null
+}
+
 const rootRoute = createRootRoute({ component: Root })
 
 const appRoute = createRoute({
@@ -65,6 +71,12 @@ const listRoute = createRoute({
   component: ListRoute,
 })
 
+const tokensRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/ajustes/tokens',
+  component: TokensRoute,
+})
+
 /** Laboratorio de diseño: sin datos y sin sesión; se carga aparte para que axe-core no pese en la app. */
 const designRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -77,7 +89,7 @@ const designRoute = createRoute({
 
 export const router = createRouter({
   routeTree: rootRoute.addChildren([
-    appRoute.addChildren([homeRoute, listRoute]),
+    appRoute.addChildren([homeRoute, listRoute, tokensRoute]),
     designRoute,
   ]),
   defaultPreload: 'intent',

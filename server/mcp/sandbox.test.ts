@@ -42,10 +42,10 @@ describe('sandbox (QuickJS)', () => {
       },
     }
     const r = await runSandboxed(
-      'try { await host.boom() } catch (e) { return String(e) } return "no"',
+      'try { await host.boom() } catch (e) { return [e instanceof Error, e.message] } return "no"',
       host,
     )
-    expect(r).toMatchObject({ ok: true, result: '"FORBIDDEN"' })
+    expect(r).toMatchObject({ ok: true, result: '[true,"FORBIDDEN"]' })
   })
 
   test('no existen fetch, Bun, require, process ni import dinámico de red', async () => {

@@ -11,6 +11,7 @@
     "node_modules",
     "src-tauri",
     "bun.lock",
-    "web/styles/palettes.css"
+    "web/styles/palettes.css",
+    "server/mcp/generated"
   ]
 }
