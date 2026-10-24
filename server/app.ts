@@ -2,6 +2,7 @@ import type { Database } from 'bun:sqlite'
 import { Elysia } from 'elysia'
 import { GraphQLError } from 'graphql'
 import { createYoga, maskError, type Plugin } from 'graphql-yoga'
+import { devLoginRoute } from './auth/dev'
 import { authRoutes } from './auth/routes'
 import { parseCookies, sessionCookieName } from './auth/cookies'
 import type { GithubClient } from './auth/github'
@@ -112,6 +113,7 @@ export function createApp(db: Database, opts: AppOptions = {}) {
 
   return new Elysia()
     .use(authRoutes({ db, ingress, config, github: opts.github ?? null, now }))
+    .use(devLoginRoute({ db, ingress, config, now }))
     .get('/health', () => ({ status: 'ok' }))
     .get('/ready', ({ set }) => {
       let ready = false
