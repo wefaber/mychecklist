@@ -4,7 +4,11 @@ import {
   type TObject,
   type TSchema,
 } from '@sinclair/typebox'
-import { Value } from '@sinclair/typebox/value'
+import {
+  createRegistry,
+  defineOp as define,
+  type Scope,
+} from '@wefaber/codemode'
 import { DomainError } from '../errors'
 import {
   createItem,
@@ -44,27 +48,23 @@ import { MAX_NAME, MAX_TEXT } from './validate'
 
 export type Mode = 'read' | 'write'
 
+/** Los scopes de un token según su modo (ADR 0007): `write` incluye `read`. */
+export const scopesFor = (mode: Mode): string[] => [`checklist:${mode}`]
+
 /** Lo que el servidor sabe de quien llama: sale del token, no del código del agente. */
 export type OpContext = { deps: Deps; caller: Caller; orgId: string }
 
-export type Op = {
-  name: string
-  mode: Mode
-  summary: string
-  input: TObject
-  output: TSchema
-  run(ctx: OpContext, input: never): unknown
-}
-
-export function defineOp<I extends TObject, O extends TSchema>(def: {
-  name: string
-  mode: Mode
+/** `defineOp` del toolkit con el contexto de este producto ya fijado. */
+function defineOp<I extends TObject, O extends TSchema>(def: {
+  id: string
+  scope: Scope
   summary: string
   input: I
   output: O
-  run: (ctx: OpContext, input: Static<I>) => Static<O>
-}): Op {
-  return def as Op
+  verbException?: string
+  handler: (ctx: OpContext, input: Static<I>) => Static<O>
+}) {
+  return define<OpContext, I, O>(def)
 }
 
 // ---- Esquemas con nombre: el generador los emite una vez y los referencia por nombre -----------------------------
@@ -211,37 +211,38 @@ const OnlyId = Type.Object({ id: Id }, { additionalProperties: false })
 
 // ---- Operaciones ---------------------------------------------------------------------------------------------------
 
-export const OPS: Op[] = [
+const OPS = [
   defineOp({
-    name: 'org.get',
-    mode: 'read',
+    id: 'checklist.org.get',
+    scope: 'checklist:read',
     summary: 'La organización del token y el rol del usuario en ella.',
     input: Empty,
     output: Org,
-    run: (ctx) => {
+    handler: (ctx) => {
       const o = getOrg(ctx.deps.db, ctx.caller, ctx.orgId)
       return { id: o.id, name: o.name, kind: o.kind, role: o.role }
     },
   }),
   defineOp({
-    name: 'lists.list',
-    mode: 'read',
+    id: 'checklist.lists.list',
+    scope: 'checklist:read',
     summary: 'Las listas vivas, en orden.',
     input: Empty,
     output: Type.Array(List),
-    run: (ctx) => listLists(ctx.deps, ctx.caller, ctx.orgId).map(listOut),
+    handler: (ctx) => listLists(ctx.deps, ctx.caller, ctx.orgId).map(listOut),
   }),
   defineOp({
-    name: 'lists.get',
-    mode: 'read',
+    id: 'checklist.lists.get',
+    scope: 'checklist:read',
     summary: 'Una lista por id.',
     input: OnlyId,
     output: List,
-    run: (ctx, { id }) => listOut(getList(ctx.deps, ctx.caller, ctx.orgId, id)),
+    handler: (ctx, { id }) =>
+      listOut(getList(ctx.deps, ctx.caller, ctx.orgId, id)),
   }),
   defineOp({
-    name: 'lists.create',
-    mode: 'write',
+    id: 'checklist.lists.create',
+    scope: 'checklist:write',
     summary: `Crea una lista. ${AFTER_DOC}`,
     input: Type.Object(
       {
@@ -251,7 +252,7 @@ export const OPS: Op[] = [
       { additionalProperties: false },
     ),
     output: List,
-    run: (ctx, input) =>
+    handler: (ctx, input) =>
       listOut(
         createList(ctx.deps, ctx.caller, {
           orgId: ctx.orgId,
@@ -261,27 +262,29 @@ export const OPS: Op[] = [
       ),
   }),
   defineOp({
-    name: 'lists.rename',
-    mode: 'write',
+    id: 'checklist.lists.rename',
+    scope: 'checklist:write',
+    verbException:
+      'Cambia solo el nombre; `update` sugeriría que se puede cambiar cualquier campo.',
     summary: 'Cambia el nombre de una lista.',
     input: Type.Object(
       { id: Id, name: Type.String({ maxLength: MAX_NAME }) },
       { additionalProperties: false },
     ),
     output: List,
-    run: (ctx, input) =>
+    handler: (ctx, input) =>
       listOut(renameList(ctx.deps, ctx.caller, { orgId: ctx.orgId, ...input })),
   }),
   defineOp({
-    name: 'lists.move',
-    mode: 'write',
+    id: 'checklist.lists.move',
+    scope: 'checklist:write',
     summary: `Mueve una lista. ${AFTER_DOC}`,
     input: Type.Object(
       { id: Id, afterId: Type.Optional(NullableId) },
       { additionalProperties: false },
     ),
     output: List,
-    run: (ctx, input) =>
+    handler: (ctx, input) =>
       listOut(
         moveList(ctx.deps, ctx.caller, {
           orgId: ctx.orgId,
@@ -294,26 +297,26 @@ export const OPS: Op[] = [
       ),
   }),
   defineOp({
-    name: 'lists.delete',
-    mode: 'write',
+    id: 'checklist.lists.delete',
+    scope: 'checklist:write',
     summary: 'Borra una lista (borrado lógico: `lists.restore` la devuelve).',
     input: OnlyId,
     output: List,
-    run: (ctx, { id }) =>
+    handler: (ctx, { id }) =>
       listOut(deleteList(ctx.deps, ctx.caller, { orgId: ctx.orgId, id })),
   }),
   defineOp({
-    name: 'lists.restore',
-    mode: 'write',
+    id: 'checklist.lists.restore',
+    scope: 'checklist:write',
     summary: 'Restaura una lista borrada.',
     input: OnlyId,
     output: List,
-    run: (ctx, { id }) =>
+    handler: (ctx, { id }) =>
       listOut(restoreList(ctx.deps, ctx.caller, { orgId: ctx.orgId, id })),
   }),
   defineOp({
-    name: 'items.list',
-    mode: 'read',
+    id: 'checklist.items.list',
+    scope: 'checklist:read',
     summary: `Items vivos de una lista, planos y en orden (los subitems traen \`parentId\`). Hasta ${MAX_ITEMS_PER_READ} por llamada; seguí con \`offset\`.`,
     input: Type.Object(
       {
@@ -326,7 +329,7 @@ export const OPS: Op[] = [
       { additionalProperties: false },
     ),
     output: Type.Array(Item),
-    run: (ctx, input) => {
+    handler: (ctx, input) => {
       const offset = input.offset ?? 0
       const limit = input.limit ?? MAX_ITEMS_PER_READ
       return listItems(ctx.deps, ctx.caller, ctx.orgId, input.listId)
@@ -335,19 +338,19 @@ export const OPS: Op[] = [
     },
   }),
   defineOp({
-    name: 'items.get',
-    mode: 'read',
+    id: 'checklist.items.get',
+    scope: 'checklist:read',
     summary: 'Un item vivo por id, o null si no existe.',
     input: OnlyId,
     output: Type.Union([Item, Type.Null()]),
-    run: (ctx, { id }) => {
+    handler: (ctx, { id }) => {
       const item = getItem(ctx.deps, ctx.caller, ctx.orgId, id)
       return item ? itemOut(item) : null
     },
   }),
   defineOp({
-    name: 'items.search',
-    mode: 'read',
+    id: 'checklist.items.search',
+    scope: 'checklist:read',
     summary: `Busca items por texto en toda la organización (hasta ${MAX_HITS}).`,
     input: Type.Object(
       {
@@ -357,7 +360,7 @@ export const OPS: Op[] = [
       { additionalProperties: false },
     ),
     output: Type.Array(Hit),
-    run: (ctx, input) =>
+    handler: (ctx, input) =>
       searchItems(
         ctx.deps,
         ctx.caller,
@@ -373,17 +376,19 @@ export const OPS: Op[] = [
       })),
   }),
   defineOp({
-    name: 'items.backlinks',
-    mode: 'read',
+    id: 'checklist.items.backlinks',
+    scope: 'checklist:read',
+    verbException:
+      'Lectura de los items que enlazan a uno con `[[id]]`; no es una lista del recurso.',
     summary: 'Items vivos cuyo texto enlaza a este con `[[id]]`.',
     input: OnlyId,
     output: Type.Array(MentionSchema),
-    run: (ctx, { id }) =>
+    handler: (ctx, { id }) =>
       listBacklinks(ctx.deps, ctx.caller, ctx.orgId, id).map(mentionOut),
   }),
   defineOp({
-    name: 'items.create',
-    mode: 'write',
+    id: 'checklist.items.create',
+    scope: 'checklist:write',
     summary: `Crea un item en una lista (con \`parentId\`, un subitem). ${AFTER_DOC}`,
     input: Type.Object(
       {
@@ -395,7 +400,7 @@ export const OPS: Op[] = [
       { additionalProperties: false },
     ),
     output: Item,
-    run: (ctx, input) => {
+    handler: (ctx, input) => {
       const parentId = input.parentId ?? null
       return itemOut(
         createItem(ctx.deps, ctx.caller, {
@@ -412,36 +417,39 @@ export const OPS: Op[] = [
     },
   }),
   defineOp({
-    name: 'items.updateText',
-    mode: 'write',
+    id: 'checklist.items.updateText',
+    scope: 'checklist:write',
+    verbException: 'Cambia solo el texto (Markdown) y reindexa las menciones.',
     summary: 'Reemplaza el texto (Markdown) de un item.',
     input: Type.Object(
       { id: Id, text: Type.String({ maxLength: MAX_TEXT }) },
       { additionalProperties: false },
     ),
     output: Item,
-    run: (ctx, input) =>
+    handler: (ctx, input) =>
       itemOut(
         updateItemText(ctx.deps, ctx.caller, { orgId: ctx.orgId, ...input }),
       ),
   }),
   defineOp({
-    name: 'items.setDone',
-    mode: 'write',
+    id: 'checklist.items.setDone',
+    scope: 'checklist:write',
+    verbException:
+      'Marca o desmarca como hecho; es la acción más frecuente y no es un `update` genérico.',
     summary: 'Completa o reabre un item.',
     input: Type.Object(
       { id: Id, done: Type.Boolean() },
       { additionalProperties: false },
     ),
     output: Item,
-    run: (ctx, input) =>
+    handler: (ctx, input) =>
       itemOut(
         setItemDone(ctx.deps, ctx.caller, { orgId: ctx.orgId, ...input }),
       ),
   }),
   defineOp({
-    name: 'items.move',
-    mode: 'write',
+    id: 'checklist.items.move',
+    scope: 'checklist:write',
     summary: `Mueve un item (a otra lista o de padre con \`listId\` y \`parentId\`; omitidos, donde está; \`parentId: null\` lo pasa a primer nivel). ${AFTER_DOC}`,
     input: Type.Object(
       {
@@ -453,7 +461,7 @@ export const OPS: Op[] = [
       { additionalProperties: false },
     ),
     output: Item,
-    run: (ctx, input) => {
+    handler: (ctx, input) => {
       let afterId = input.afterId
       if (afterId === undefined) {
         const current = getItem(ctx.deps, ctx.caller, ctx.orgId, input.id)
@@ -475,27 +483,27 @@ export const OPS: Op[] = [
     },
   }),
   defineOp({
-    name: 'items.delete',
-    mode: 'write',
+    id: 'checklist.items.delete',
+    scope: 'checklist:write',
     summary:
       'Borra un item y sus subitems (borrado lógico: `items.restore` los devuelve).',
     input: OnlyId,
     output: Item,
-    run: (ctx, { id }) =>
+    handler: (ctx, { id }) =>
       itemOut(deleteItem(ctx.deps, ctx.caller, { orgId: ctx.orgId, id })),
   }),
   defineOp({
-    name: 'items.restore',
-    mode: 'write',
+    id: 'checklist.items.restore',
+    scope: 'checklist:write',
     summary: 'Restaura un item borrado.',
     input: OnlyId,
     output: Item,
-    run: (ctx, { id }) =>
+    handler: (ctx, { id }) =>
       itemOut(restoreItem(ctx.deps, ctx.caller, { orgId: ctx.orgId, id })),
   }),
   defineOp({
-    name: 'activity.list',
-    mode: 'read',
+    id: 'checklist.activity.list',
+    scope: 'checklist:read',
     summary: `Los últimos cambios de la organización, los más nuevos primero (hasta ${MAX_ACTIVITY}).`,
     input: Type.Object(
       {
@@ -506,7 +514,7 @@ export const OPS: Op[] = [
       { additionalProperties: false },
     ),
     output: Type.Array(Activity),
-    run: (ctx, input) =>
+    handler: (ctx, input) =>
       listActivity(ctx.deps.db, ctx.caller, ctx.orgId, input.first ?? 20).map(
         (a) => ({
           id: a.id,
@@ -520,33 +528,10 @@ export const OPS: Op[] = [
   }),
 ]
 
-const BY_NAME = new Map(OPS.map((op) => [op.name, op]))
-
-/** Las operaciones que un token del modo dado puede ver: `read` no tiene las de escritura, ni existen en su objeto. */
-export function opsFor(mode: Mode): Op[] {
-  return mode === 'write' ? OPS : OPS.filter((op) => op.mode === 'read')
-}
-
-/** Valida la entrada contra el esquema y corre la operación con el contexto del token. */
-export function callOp(
-  mode: Mode,
-  ctx: OpContext,
-  name: string,
-  args: unknown,
-): unknown {
-  const op = BY_NAME.get(name)
-  if (!op || (op.mode === 'write' && mode !== 'write'))
-    throw new DomainError(
-      'FORBIDDEN',
-      `La operación ${name} no está disponible`,
-    )
-  const input = args ?? {}
-  if (!Value.Check(op.input, input)) {
-    const first = Value.Errors(op.input, input).First()
-    throw new DomainError(
-      'INVALID_INPUT',
-      `${name}: ${first ? `${first.path || 'entrada'} ${first.message}` : 'entrada inválida'}`,
-    )
-  }
-  return op.run(ctx, input as never)
-}
+/** El registry de agentes de mychecklist (SPEC R1): de acá salen el spec, el d.ts y el objeto `codemode.checklist`. */
+export const registry = createRegistry<OpContext>({
+  product: 'checklist',
+  version: '1.0.0',
+  types: NAMED,
+  ops: OPS,
+})

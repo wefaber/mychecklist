@@ -161,17 +161,17 @@ describe('Code Mode: autenticación y alcance del token', () => {
     const w = await world()
     const write = w.token(w.a.userId, w.orgA, 'write').secret
     const read = w.token(w.a.userId, w.orgA, 'read').secret
-    const code = `return spec.ops.filter((o) => o.name.startsWith('items.')).map((o) => [o.name, o.mode])`
+    const code = `return spec.ops.filter((o) => o.id.startsWith('checklist.items.')).map((o) => [o.id, o.scope])`
     const all = (await w.exec(write, code, 'search')).body.result as string[][]
-    expect(all.map((o) => o[0])).toContain('items.create')
+    expect(all.map((o) => o[0])).toContain('checklist.items.create')
     const onlyRead = (await w.exec(read, code, 'search')).body
       .result as string[][]
     expect(onlyRead.length).toBeGreaterThan(0)
-    expect(onlyRead.every((o) => o[1] === 'read')).toBe(true)
+    expect(onlyRead.every((o) => o[1] === 'checklist:read')).toBe(true)
     // El esquema de entrada viaja con la operación, y los tipos con nombre aparte.
     const shape = await w.exec(
       write,
-      `const op = spec.ops.find((o) => o.name === 'items.create'); return [Object.keys(op.input.properties), op.output, Object.keys(spec.types)]`,
+      `const op = spec.ops.find((o) => o.id === 'checklist.items.create'); return [Object.keys(op.input.properties), op.output, Object.keys(spec.types)]`,
       'search',
     )
     expect(shape.body.result[0].sort()).toEqual([

@@ -1,7 +1,11 @@
 import { createApp } from '../app'
 import { personalOrgId } from '../db/testing'
-import { DEFAULT_LIMITER, createLimiter, type Limiter } from './limiter'
-import { DEFAULT_LIMITS, type Limits } from './sandbox'
+import { DEFAULT_LIMITS, type Limits } from '@wefaber/codemode'
+import {
+  DEFAULT_LIMITER,
+  createLimiter,
+  type Limiter,
+} from '@wefaber/codemode-mcp'
 import { createBus } from '../events'
 import type { Ingress } from '../ingress'
 import { createApiToken } from '../services/tokens'
@@ -9,7 +13,9 @@ import type { TokenMode } from '../db/tokens'
 import { alice, bob, config, loginAs, setupServer } from '../testing'
 
 /** Una base con dos usuarios y una app por puerta, con límites de sandbox bajos para que los tests sean rápidos. */
-export async function world(opts: { limits?: Limits; limiter?: Limiter } = {}) {
+export async function world(
+  opts: { limits?: Partial<Limits>; limiter?: Limiter } = {},
+) {
   const ctx = setupServer()
   const a = await loginAs(ctx.db, alice, 'public')
   const b = await loginAs(ctx.db, bob, 'public')

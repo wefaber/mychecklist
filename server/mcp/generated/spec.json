@@ -1,9 +1,10 @@
 {
-  "version": 1,
+  "version": "1.0.0",
+  "product": "checklist",
   "ops": [
     {
-      "name": "org.get",
-      "mode": "read",
+      "id": "checklist.org.get",
+      "scope": "checklist:read",
       "summary": "La organización del token y el rol del usuario en ella.",
       "input": {
         "additionalProperties": false,
@@ -15,8 +16,8 @@
       }
     },
     {
-      "name": "lists.list",
-      "mode": "read",
+      "id": "checklist.lists.list",
+      "scope": "checklist:read",
       "summary": "Las listas vivas, en orden.",
       "input": {
         "additionalProperties": false,
@@ -31,8 +32,8 @@
       }
     },
     {
-      "name": "lists.get",
-      "mode": "read",
+      "id": "checklist.lists.get",
+      "scope": "checklist:read",
       "summary": "Una lista por id.",
       "input": {
         "additionalProperties": false,
@@ -53,8 +54,8 @@
       }
     },
     {
-      "name": "lists.create",
-      "mode": "write",
+      "id": "checklist.lists.create",
+      "scope": "checklist:write",
       "summary": "Crea una lista. `afterId`: el item o la lista tras la que va; omitido va al final y `null` al principio.",
       "input": {
         "additionalProperties": false,
@@ -86,8 +87,8 @@
       }
     },
     {
-      "name": "lists.rename",
-      "mode": "write",
+      "id": "checklist.lists.rename",
+      "scope": "checklist:write",
       "summary": "Cambia el nombre de una lista.",
       "input": {
         "additionalProperties": false,
@@ -110,11 +111,12 @@
       },
       "output": {
         "$ref": "List"
-      }
+      },
+      "verbException": "Cambia solo el nombre; `update` sugeriría que se puede cambiar cualquier campo."
     },
     {
-      "name": "lists.move",
-      "mode": "write",
+      "id": "checklist.lists.move",
+      "scope": "checklist:write",
       "summary": "Mueve una lista. `afterId`: el item o la lista tras la que va; omitido va al final y `null` al principio.",
       "input": {
         "additionalProperties": false,
@@ -147,8 +149,8 @@
       }
     },
     {
-      "name": "lists.delete",
-      "mode": "write",
+      "id": "checklist.lists.delete",
+      "scope": "checklist:write",
       "summary": "Borra una lista (borrado lógico: `lists.restore` la devuelve).",
       "input": {
         "additionalProperties": false,
@@ -169,8 +171,8 @@
       }
     },
     {
-      "name": "lists.restore",
-      "mode": "write",
+      "id": "checklist.lists.restore",
+      "scope": "checklist:write",
       "summary": "Restaura una lista borrada.",
       "input": {
         "additionalProperties": false,
@@ -191,8 +193,8 @@
       }
     },
     {
-      "name": "items.list",
-      "mode": "read",
+      "id": "checklist.items.list",
+      "scope": "checklist:read",
       "summary": "Items vivos de una lista, planos y en orden (los subitems traen `parentId`). Hasta 500 por llamada; seguí con `offset`.",
       "input": {
         "additionalProperties": false,
@@ -225,8 +227,8 @@
       }
     },
     {
-      "name": "items.get",
-      "mode": "read",
+      "id": "checklist.items.get",
+      "scope": "checklist:read",
       "summary": "Un item vivo por id, o null si no existe.",
       "input": {
         "additionalProperties": false,
@@ -254,8 +256,8 @@
       }
     },
     {
-      "name": "items.search",
-      "mode": "read",
+      "id": "checklist.items.search",
+      "scope": "checklist:read",
       "summary": "Busca items por texto en toda la organización (hasta 50).",
       "input": {
         "additionalProperties": false,
@@ -283,8 +285,8 @@
       }
     },
     {
-      "name": "items.backlinks",
-      "mode": "read",
+      "id": "checklist.items.backlinks",
+      "scope": "checklist:read",
       "summary": "Items vivos cuyo texto enlaza a este con `[[id]]`.",
       "input": {
         "additionalProperties": false,
@@ -305,11 +307,12 @@
         "items": {
           "$ref": "Mention"
         }
-      }
+      },
+      "verbException": "Lectura de los items que enlazan a uno con `[[id]]`; no es una lista del recurso."
     },
     {
-      "name": "items.create",
-      "mode": "write",
+      "id": "checklist.items.create",
+      "scope": "checklist:write",
       "summary": "Crea un item en una lista (con `parentId`, un subitem). `afterId`: el item o la lista tras la que va; omitido va al final y `null` al principio.",
       "input": {
         "additionalProperties": false,
@@ -360,8 +363,8 @@
       }
     },
     {
-      "name": "items.updateText",
-      "mode": "write",
+      "id": "checklist.items.updateText",
+      "scope": "checklist:write",
       "summary": "Reemplaza el texto (Markdown) de un item.",
       "input": {
         "additionalProperties": false,
@@ -384,11 +387,12 @@
       },
       "output": {
         "$ref": "Item"
-      }
+      },
+      "verbException": "Cambia solo el texto (Markdown) y reindexa las menciones."
     },
     {
-      "name": "items.setDone",
-      "mode": "write",
+      "id": "checklist.items.setDone",
+      "scope": "checklist:write",
       "summary": "Completa o reabre un item.",
       "input": {
         "additionalProperties": false,
@@ -410,11 +414,12 @@
       },
       "output": {
         "$ref": "Item"
-      }
+      },
+      "verbException": "Marca o desmarca como hecho; es la acción más frecuente y no es un `update` genérico."
     },
     {
-      "name": "items.move",
-      "mode": "write",
+      "id": "checklist.items.move",
+      "scope": "checklist:write",
       "summary": "Mueve un item (a otra lista o de padre con `listId` y `parentId`; omitidos, donde está; `parentId: null` lo pasa a primer nivel). `afterId`: el item o la lista tras la que va; omitido va al final y `null` al principio.",
       "input": {
         "additionalProperties": false,
@@ -464,8 +469,8 @@
       }
     },
     {
-      "name": "items.delete",
-      "mode": "write",
+      "id": "checklist.items.delete",
+      "scope": "checklist:write",
       "summary": "Borra un item y sus subitems (borrado lógico: `items.restore` los devuelve).",
       "input": {
         "additionalProperties": false,
@@ -486,8 +491,8 @@
       }
     },
     {
-      "name": "items.restore",
-      "mode": "write",
+      "id": "checklist.items.restore",
+      "scope": "checklist:write",
       "summary": "Restaura un item borrado.",
       "input": {
         "additionalProperties": false,
@@ -508,8 +513,8 @@
       }
     },
     {
-      "name": "activity.list",
-      "mode": "read",
+      "id": "checklist.activity.list",
+      "scope": "checklist:read",
       "summary": "Los últimos cambios de la organización, los más nuevos primero (hasta 100).",
       "input": {
         "additionalProperties": false,

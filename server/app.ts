@@ -17,8 +17,8 @@ import { createBus, type Bus } from './events'
 import type { Ingress } from './ingress'
 import { maxDepth } from './graphql/limits'
 import { codemodeRoutes } from './mcp/routes'
-import { createLimiter, type Limiter } from './mcp/limiter'
-import type { Limits } from './mcp/sandbox'
+import type { Limits } from '@wefaber/codemode'
+import { createLimiter, type Limiter } from '@wefaber/codemode-mcp'
 import { buildSchema, type Context } from './graphql/schema'
 import {
   GENERIC_MIME,
@@ -64,7 +64,7 @@ type AppOptions = {
   /** Tope de ejecuciones de Code Mode; los dos listeners comparten el del proceso (ADR 0007). */
   limiter?: Limiter
   /** Solo los tests bajan los límites del sandbox. */
-  codemodeLimits?: Limits
+  codemodeLimits?: Partial<Limits>
   dev?: boolean
   logging?: boolean
   now?: () => number
@@ -148,17 +148,6 @@ export function createApp(db: Database, opts: AppOptions = {}) {
       }),
     )
     .use(devLoginRoute({ db, ingress, config, now }))
-    .use(
-      codemodeRoutes({
-        db,
-        bus,
-        ingress,
-        config,
-        now,
-        limiter: opts.limiter ?? createLimiter(undefined, now),
-        limits: opts.codemodeLimits,
-      }),
-    )
     .get('/health', () => ({ status: 'ok' }))
     .get('/ready', ({ set }) => {
       let ready = false

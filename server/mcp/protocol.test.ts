@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { Value } from '@sinclair/typebox/value'
-import { callOp, OPS, opsFor } from '../services/registry'
+import { registry } from '../services/registry'
 import { world } from './testing'
 
 const rpc = (id: number, method: string, params?: object) => ({
@@ -68,7 +68,7 @@ describe('/mcp (Streamable HTTP sin estado)', () => {
         rpc(5, 'tools/call', {
           name: 'search',
           arguments: {
-            code: `return spec.ops.filter((o) => o.name === 'lists.create').length`,
+            code: `return spec.ops.filter((o) => o.id === 'checklist.lists.create').length`,
           },
         }),
       )
@@ -140,7 +140,7 @@ describe('/mcp (Streamable HTTP sin estado)', () => {
 })
 
 describe('registry: operaciones', () => {
-  test('una entrada inválida da INVALID_INPUT con la operación', async () => {
+  test('una entrada inválida da VALIDATION con la operación', async () => {
     const w = await world()
     const { secret } = w.token(w.a.userId, w.orgA)
     const r = await w.exec(
@@ -153,7 +153,7 @@ describe('registry: operaciones', () => {
     )
     expect(r.body.result).toHaveLength(4)
     for (const m of r.body.result as string[])
-      expect(m).toMatch(/^INVALID_INPUT: items\.create/)
+      expect(m).toMatch(/^VALIDATION: checklist\.items\.create/)
   })
 
   test('las reglas del dominio valen igual: límites, subitems, borrado lógico', async () => {
@@ -174,7 +174,7 @@ describe('registry: operaciones', () => {
        return out`,
     )
     expect(r.body.result.nieto).toMatch(/^INVALID_INPUT/)
-    expect(r.body.result.largo).toMatch(/^INVALID_INPUT/)
+    expect(r.body.result.largo).toMatch(/^VALIDATION/)
     expect(r.body.result.tras).toBe(0)
     expect(r.body.result.vuelta).toEqual(['padre', 'hijo'])
   })
@@ -194,7 +194,7 @@ describe('registry: operaciones', () => {
     )
     expect(r.body.result[0]).toEqual(['i0', 'i1', 'i2', 'i3'])
     expect(r.body.result[1]).toEqual(['i4', 'i5'])
-    expect(r.body.result[2]).toMatch(/^INVALID_INPUT/)
+    expect(r.body.result[2]).toMatch(/^VALIDATION/)
   })
 
   test('toda operación del registry se ejercita y su salida cumple su esquema', async () => {
@@ -209,36 +209,40 @@ describe('registry: operaciones', () => {
       orgId: w.orgA,
     }
     const used = new Set<string>()
-    const call = (name: string, input: object = {}) => {
-      const op = OPS.find((o) => o.name === name)!
-      const out = callOp('write', ctx, name, input)
-      used.add(name)
+    const call = async (name: string, input: object = {}) => {
+      const id = `checklist.${name}`
+      const op = registry.get(id)!
+      const out = await registry.call(['checklist:write'], ctx, id, input)
+      used.add(id)
       expect(Value.Check(op.output, out)).toBe(true)
       return out as any
     }
-    call('org.get')
-    const l1 = call('lists.create', { name: 'Uno' })
-    const l2 = call('lists.create', { name: 'Dos', afterId: null })
-    call('lists.get', { id: l1.id })
-    call('lists.rename', { id: l1.id, name: 'Uno bis' })
-    call('lists.move', { id: l2.id })
-    const a = call('items.create', { listId: l1.id, text: 'a' })
-    const b = call('items.create', { listId: l1.id, text: `ver [[${a.id}]]` })
-    call('items.get', { id: b.id })
-    expect(call('items.get', { id: 'no-existe' })).toBeNull()
-    call('items.list', { listId: l1.id })
-    call('items.search', { query: 'ver' })
-    call('items.updateText', { id: a.id, text: 'a2' })
-    expect(call('items.backlinks', { id: a.id })).toHaveLength(1)
-    call('items.setDone', { id: a.id, done: true })
-    call('items.move', { id: a.id, listId: l2.id })
-    call('items.delete', { id: a.id })
-    call('items.restore', { id: a.id })
-    call('lists.delete', { id: l2.id })
-    call('lists.restore', { id: l2.id })
-    call('lists.list')
-    call('activity.list', { first: 5 })
-    expect([...used].sort()).toEqual(OPS.map((o) => o.name).sort())
+    await call('org.get')
+    const l1 = await call('lists.create', { name: 'Uno' })
+    const l2 = await call('lists.create', { name: 'Dos', afterId: null })
+    await call('lists.get', { id: l1.id })
+    await call('lists.rename', { id: l1.id, name: 'Uno bis' })
+    await call('lists.move', { id: l2.id })
+    const a = await call('items.create', { listId: l1.id, text: 'a' })
+    const b = await call('items.create', {
+      listId: l1.id,
+      text: `ver [[${a.id}]]`,
+    })
+    await call('items.get', { id: b.id })
+    expect(await call('items.get', { id: 'no-existe' })).toBeNull()
+    await call('items.list', { listId: l1.id })
+    await call('items.search', { query: 'ver' })
+    await call('items.updateText', { id: a.id, text: 'a2' })
+    expect(await call('items.backlinks', { id: a.id })).toHaveLength(1)
+    await call('items.setDone', { id: a.id, done: true })
+    await call('items.move', { id: a.id, listId: l2.id })
+    await call('items.delete', { id: a.id })
+    await call('items.restore', { id: a.id })
+    await call('lists.delete', { id: l2.id })
+    await call('lists.restore', { id: l2.id })
+    await call('lists.list')
+    await call('activity.list', { first: 5 })
+    expect([...used].sort()).toEqual(registry.ops.map((o) => o.id).sort())
   })
 
   test('una escritura no se invoca con un token de lectura aunque se la nombre', async () => {
@@ -252,12 +256,23 @@ describe('registry: operaciones', () => {
       },
       orgId: w.orgA,
     }
-    expect(() => callOp('read', ctx, 'lists.create', { name: 'x' })).toThrow(
-      /no está disponible/,
-    )
-    expect(() => callOp('write', ctx, 'sistema.borrarTodo', {})).toThrow(
-      /no está disponible/,
-    )
-    expect(opsFor('read').every((o) => o.mode === 'read')).toBe(true)
+    await expect(
+      registry.call(['checklist:read'], ctx, 'checklist.lists.create', {
+        name: 'x',
+      }),
+    ).rejects.toThrow(/is not available/)
+    await expect(
+      registry.call(
+        ['checklist:write'],
+        ctx,
+        'checklist.sistema.borrarTodo',
+        {},
+      ),
+    ).rejects.toThrow(/is not available/)
+    expect(
+      registry
+        .visible(['checklist:read'])
+        .every((o) => o.scope === 'checklist:read'),
+    ).toBe(true)
   })
 })
