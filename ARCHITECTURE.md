@@ -111,19 +111,24 @@ jobs     ┘
   hasta 20 vigentes por usuario y org. La pantalla está en `/ajustes/tokens`. La tabla no es "con dueño": se busca por
   hash antes de que exista un scope (`server/db/tokens.ts`); todo lo que el token hace pasa por `openScope`, que revisa
   membresía y puerta en cada llamada.
-- **Registry** (`server/services/registry.ts`): cada operación se declara una vez con `defineOp` (esquemas TypeBox, modo
-  `read`/`write`) y llama a `services/*` con el `Caller` del token (`via: 'mcp'`). Ninguna operación recibe `orgId`.
-  `scripts/gen-codemode.ts` genera `server/mcp/generated/checklist.d.ts` y `spec.json`; un test falla si quedan viejos.
-  Agregar una operación al registry la expone sola en `search`, `execute` y el d.ts.
-- **Sandbox**: cada ejecución levanta un Bun Worker (`server/mcp/worker.ts`) con QuickJS (`sandbox.ts`) y el host
-  (`exec.ts`) atiende las llamadas por `postMessage`, las valida contra el esquema y las cuenta. Límites: 5 s (el Worker
+- **Registry** (`server/services/registry.ts`, ADR 0010): cada operación se declara una vez con `defineOp` de
+  `@wefaber/codemode` (esquemas TypeBox, id `checklist.<recurso>.<verbo>`, scope `checklist:read` o `checklist:write`) y
+  llama a `services/*` con el `Caller` del token (`via: 'mcp'`). Ninguna operación recibe `orgId`. `bun run gen` (`wcm gen`)
+  genera `server/mcp/generated/client.d.ts` y `spec.json`; un test falla si quedan viejos. Agregar una operación al
+  registry la expone sola en `search`, `execute` y el d.ts. Los verbos fuera del conjunto base (`rename`, `updateText`,
+  `setDone`, `backlinks`) declaran `verbException`.
+- **Sandbox** (`@wefaber/codemode-sandbox-quickjs`): cada ejecución levanta un Bun Worker con QuickJS y el host atiende
+  las llamadas por `postMessage`, las valida contra el esquema y las cuenta. Límites: 5 s (el Worker
   se corta con `terminate()` a los 6), 64 MB, 50 llamadas, 64 KB de resultado, 200 líneas de log, 32 KB de código, 64 KB
   de cuerpo y 500 items por lectura. Un `execute` con token de lectura ni siquiera tiene las operaciones de escritura.
-- **Frecuencia** (`limiter.ts`): una ejecución a la vez por token, 60 por minuto y 4 Workers por proceso, en memoria; si
+- **Frecuencia** (`createLimiter` de `@wefaber/codemode-mcp`): una ejecución a la vez por token, 60 por minuto y 4 Workers por proceso, en memoria; si
   no hay lugar, 429 `RATE_LIMITED` (no hay cola).
-- **Rutas**: `POST /codemode/search`, `POST /codemode/execute` y `POST /mcp` (Streamable HTTP sin estado ni SSE,
+- **Auditoría**: cada corrida, también la rechazada, deja una fila en `codemode_runs` (`server/db/runs.ts`: token, ops
+  llamadas, ms, bytes, código de error, versión del spec).
+- **Rutas** (`server/mcp/routes.ts` monta `createWcmHandler`): `POST /codemode/search`, `POST /codemode/execute` y `POST /mcp` (Streamable HTTP sin estado ni SSE,
   `initialize`/`ping`/`tools/list`/`tools/call`). Bearer `Authorization`; un `Origin` ajeno da 403; la cookie de sesión no
   sirve acá ni el Bearer en `/graphql`. Nginx proxea `/codemode/` y `/mcp` en los dos vhosts (cuerpo de hasta 64 KB).
+- **Nombres**: el objeto es `codemode.checklist.*`; `checklist.*` sigue siendo un alias durante una minor (ADR 0010).
 - **Ergonomía**: en `lists.create`, `items.create` y los `move`, `afterId` omitido es "al final" y `null` "al principio".
   Los errores del host llegan al código como `Error` con `message` `CODIGO: texto`.
 
@@ -148,19 +153,24 @@ jobs     ┘
   hasta 20 vigentes por usuario y org. La pantalla está en `/ajustes/tokens`. La tabla no es "con dueño": se busca por
   hash antes de que exista un scope (`server/db/tokens.ts`); todo lo que el token hace pasa por `openScope`, que revisa
   membresía y puerta en cada llamada.
-- **Registry** (`server/services/registry.ts`): cada operación se declara una vez con `defineOp` (esquemas TypeBox, modo
-  `read`/`write`) y llama a `services/*` con el `Caller` del token (`via: 'mcp'`). Ninguna operación recibe `orgId`.
-  `scripts/gen-codemode.ts` genera `server/mcp/generated/checklist.d.ts` y `spec.json`; un test falla si quedan viejos.
-  Agregar una operación al registry la expone sola en `search`, `execute` y el d.ts.
-- **Sandbox**: cada ejecución levanta un Bun Worker (`server/mcp/worker.ts`) con QuickJS (`sandbox.ts`) y el host
-  (`exec.ts`) atiende las llamadas por `postMessage`, las valida contra el esquema y las cuenta. Límites: 5 s (el Worker
+- **Registry** (`server/services/registry.ts`, ADR 0010): cada operación se declara una vez con `defineOp` de
+  `@wefaber/codemode` (esquemas TypeBox, id `checklist.<recurso>.<verbo>`, scope `checklist:read` o `checklist:write`) y
+  llama a `services/*` con el `Caller` del token (`via: 'mcp'`). Ninguna operación recibe `orgId`. `bun run gen` (`wcm gen`)
+  genera `server/mcp/generated/client.d.ts` y `spec.json`; un test falla si quedan viejos. Agregar una operación al
+  registry la expone sola en `search`, `execute` y el d.ts. Los verbos fuera del conjunto base (`rename`, `updateText`,
+  `setDone`, `backlinks`) declaran `verbException`.
+- **Sandbox** (`@wefaber/codemode-sandbox-quickjs`): cada ejecución levanta un Bun Worker con QuickJS y el host atiende
+  las llamadas por `postMessage`, las valida contra el esquema y las cuenta. Límites: 5 s (el Worker
   se corta con `terminate()` a los 6), 64 MB, 50 llamadas, 64 KB de resultado, 200 líneas de log, 32 KB de código, 64 KB
   de cuerpo y 500 items por lectura. Un `execute` con token de lectura ni siquiera tiene las operaciones de escritura.
-- **Frecuencia** (`limiter.ts`): una ejecución a la vez por token, 60 por minuto y 4 Workers por proceso, en memoria; si
+- **Frecuencia** (`createLimiter` de `@wefaber/codemode-mcp`): una ejecución a la vez por token, 60 por minuto y 4 Workers por proceso, en memoria; si
   no hay lugar, 429 `RATE_LIMITED` (no hay cola).
-- **Rutas**: `POST /codemode/search`, `POST /codemode/execute` y `POST /mcp` (Streamable HTTP sin estado ni SSE,
+- **Auditoría**: cada corrida, también la rechazada, deja una fila en `codemode_runs` (`server/db/runs.ts`: token, ops
+  llamadas, ms, bytes, código de error, versión del spec).
+- **Rutas** (`server/mcp/routes.ts` monta `createWcmHandler`): `POST /codemode/search`, `POST /codemode/execute` y `POST /mcp` (Streamable HTTP sin estado ni SSE,
   `initialize`/`ping`/`tools/list`/`tools/call`). Bearer `Authorization`; un `Origin` ajeno da 403; la cookie de sesión no
   sirve acá ni el Bearer en `/graphql`. Nginx proxea `/codemode/` y `/mcp` en los dos vhosts (cuerpo de hasta 64 KB).
+- **Nombres**: el objeto es `codemode.checklist.*`; `checklist.*` sigue siendo un alias durante una minor (ADR 0010).
 - **Ergonomía**: en `lists.create`, `items.create` y los `move`, `afterId` omitido es "al final" y `null` "al principio".
   Los errores del host llegan al código como `Error` con `message` `CODIGO: texto`.
 
