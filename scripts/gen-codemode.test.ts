@@ -1,25 +1,19 @@
 import { describe, expect, test } from 'bun:test'
-import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { generate, OUT_DTS, OUT_SPEC } from './gen-codemode'
+import { renderDts, staleGenerated } from '@wefaber/codemode'
+import { registry } from '../server/services/registry'
 
-const root = join(import.meta.dir, '..')
-const read = (path: string) =>
-  readFileSync(join(root, path), 'utf8').replace(/\r\n/g, '\n')
+const out = join(import.meta.dir, '..', 'server/mcp/generated')
 
-describe('gen-codemode', () => {
-  test('checklist.d.ts commiteado coincide con el registry', () => {
-    expect(read(OUT_DTS)).toBe(generate().dts)
-  })
-
-  test('spec.json commiteado coincide con el registry', () => {
-    expect(read(OUT_SPEC)).toBe(generate().spec)
+describe('codemode generado', () => {
+  test('spec.json y client.d.ts commiteados coinciden con el registry (bun run gen)', () => {
+    expect(staleGenerated(registry, out)).toEqual([])
   })
 
   test('el d.ts declara cada operación y los tipos con nombre', () => {
-    const { dts } = generate()
+    const dts = renderDts(registry)
     expect(dts).toContain('interface Item {')
-    expect(dts).toContain('declare const checklist: {')
+    expect(dts).toContain('declare const codemode: {')
     expect(dts).toContain('create(input: {')
     expect(dts).toContain('Promise<Item[]>')
   })

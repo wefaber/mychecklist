@@ -7,7 +7,7 @@ import { openDb } from './db/connection'
 import { migrate } from './db/migrate'
 import { createBus } from './events'
 import { createGithubApi } from './github/api'
-import { createLimiter } from './mcp/limiter'
+import { createLimiter } from '@wefaber/codemode-mcp'
 import { INGRESSES } from './ingress'
 import { createGithubLinks } from './services/github'
 
