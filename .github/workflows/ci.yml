@@ -30,8 +30,9 @@ jobs:
       - name: Build
         run: bun run build
 
-  # CLAUDE.md › Entrega: cada PR sube la versión de package.json. Si es igual a la de la base, el deploy
-  # publicaría el mismo número con código distinto.
+  # CLAUDE.md › Entrega: cada PR con código sube la versión de package.json. Si es igual a la de la base, el
+  # deploy publicaría el mismo número con código distinto. Un PR que solo toca docs/ o *.md no necesita subirla:
+  # así no pelea por la misma línea de package.json con los PRs de código.
   version:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -44,6 +45,12 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
+          code=$(git diff --name-only "origin/$BASE_REF...HEAD" | grep -vE '^docs/|\.md$' || true)
+          if [ -z "$code" ]; then
+            echo "Solo docs o Markdown: no hace falta subir la versión."
+            exit 0
+          fi
+          echo "Archivos de código en el PR:"; echo "$code"
           head=$(jq -r .version package.json)
           base=$(git show "origin/$BASE_REF:package.json" | jq -r .version)
           echo "base=$base head=$head"
