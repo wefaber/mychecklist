@@ -8,6 +8,9 @@ concurrency:
   group: deploy-mychecklist
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     # El runner de la org tiene que ser el del VPS: el deploy escribe en /home/hermes y
@@ -24,7 +27,7 @@ jobs:
       - name: Install
         run: /opt/bun/bun install --frozen-lockfile
 
-      - name: Check (tsc, oxlint, tests)
+      - name: Check (tsc, oxlint, scoped, nginx, tests)
         run: /opt/bun/bun run check
 
       - name: Build
@@ -32,3 +35,23 @@ jobs:
 
       - name: Blue/green deploy
         run: bash deploy/mychecklist.sh "${{ github.sha }}"
+
+      # El deploy ya exige /ready y / por el dominio. Esto agrega las rutas que nginx tiene que proxear a mano
+      # (el workflow no instala el vhost): sin token, la app contesta 401 y un vhost viejo contesta 405.
+      - name: Smoke público (dominio real)
+        env:
+          DOMAIN: checklist.wefaber.net
+        run: |
+          code() { curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$@"; }
+          fail=0
+          check() { # esperado, descripción, args de curl...
+            want=$1; label=$2; shift 2
+            got=$(code "$@" || true)
+            echo "$label -> $got (esperado $want)"
+            [ "$got" = "$want" ] || fail=1
+          }
+          check 200 "GET /ready" "https://$DOMAIN/ready"
+          check 200 "GET /" "https://$DOMAIN/"
+          check 401 "POST /codemode/execute" -X POST -H 'content-type: application/json' -d '{"code":"return 1"}' "https://$DOMAIN/codemode/execute"
+          check 401 "POST /mcp" -X POST -H 'content-type: application/json' -d '{}' "https://$DOMAIN/mcp"
+          exit $fail
