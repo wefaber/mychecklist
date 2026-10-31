@@ -7,6 +7,9 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -21,8 +24,34 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile
 
-      - name: Check (tsc, oxlint, tests)
+      - name: Check (tsc, oxlint, scoped, nginx, tests)
         run: bun run check
 
       - name: Build
         run: bun run build
+
+  # CLAUDE.md › Entrega: cada PR sube la versión de package.json. Si es igual a la de la base, el deploy
+  # publicaría el mismo número con código distinto.
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: La versión es distinta de la base
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          head=$(jq -r .version package.json)
+          base=$(git show "origin/$BASE_REF:package.json" | jq -r .version)
+          echo "base=$base head=$head"
+          if [ "$head" = "$base" ]; then
+            echo "::error file=package.json::la versión $head ya está en $BASE_REF; subila antes de mergear"
+            exit 1
+          fi
+          if [ "$(printf '%s\n%s\n' "$base" "$head" | sort -V | tail -n1)" != "$head" ]; then
+            echo "::error file=package.json::la versión $head es menor que la de la base ($base)"
+            exit 1
+          fi

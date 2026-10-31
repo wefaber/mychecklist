@@ -1,7 +1,7 @@
 {
   "name": "mychecklist",
   "private": true,
-  "version": "0.9.1",
+  "version": "0.9.3",
   "type": "module",
   "scripts": {
     "dev": "bun run dev:web",
@@ -11,7 +11,7 @@
     "build": "bun run build:web",
     "build:web": "tsc --noEmit && vite build",
     "start": "bun server/index.ts",
-    "check": "tsc --noEmit && oxlint && bun scripts/check-scoped.ts && bun test",
+    "check": "tsc --noEmit && oxlint && bun scripts/check-scoped.ts && bun scripts/check-nginx.ts && bun test",
     "test": "bun test",
     "lint": "oxlint",
     "fmt": "oxfmt",
