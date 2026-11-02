@@ -28,7 +28,7 @@ jobs:
         run: /opt/bun/bun install --frozen-lockfile
 
       - name: Check (tsc, oxlint, scoped, nginx, tests)
-        run: /opt/bun/bun run check
+        run: /opt/bun/bun run verify
 
       - name: Build
         run: /opt/bun/bun run build

@@ -50,7 +50,7 @@ base de desarrollo).
 
 | Script                | Qué hace                                                                                    |
 | --------------------- | ------------------------------------------------------------------------------------------- |
-| `bun run check`       | `tsc --noEmit`, `oxlint`, `check-scoped` y `bun test`. Tiene que pasar antes de cada commit |
+| `bun run verify`      | `tsc --noEmit`, `oxlint`, `check-scoped` y `bun test`. Tiene que pasar antes de cada commit |
 | `bun run build`       | Compila el cliente en `dist/web`                                                            |
 | `bun run start`       | Arranca el servidor (producción)                                                            |
 | `bun run fmt`         | Formatea con `oxfmt`                                                                        |

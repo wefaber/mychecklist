@@ -19,13 +19,13 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.4
 
       - name: Install
         run: bun install --frozen-lockfile
 
       - name: Check (tsc, oxlint, scoped, nginx, tests)
-        run: bun run check
+        run: bun run verify
 
       - name: Build
         run: bun run build

@@ -1,7 +1,7 @@
 # Deploy
 
 Push a `main` → `.github/workflows/deploy.yml` en el runner self-hosted de `wefaber` → `bun install --frozen-lockfile`,
-`bun run check`, `bun run build`, `deploy/mychecklist.sh <sha>`.
+`bun run verify`, `bun run build`, `deploy/mychecklist.sh <sha>`.
 
 `mychecklist.sh` es blue/green. El slot ocioso (`/home/hermes/mychecklist/{blue,green}`, puertos 4161/4162) recibe el
 release, arranca como `mychecklist@<slot>` y tiene que responder `/ready`; después Nginx apunta a él por
@@ -23,14 +23,14 @@ systemd.
 2. `mkdir -p /home/hermes/mychecklist /home/hermes/data/mychecklist /home/hermes/deploy/state/mychecklist`
 3. `~/deploy/env/mychecklist.env` (los secretos viven acá, nunca en el repo). Variables:
 
-   | Variable                                   | Qué es                                                                                         |
-   | ------------------------------------------ | ---------------------------------------------------------------------------------------------- |
-   | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | Credenciales de la GitHub App (ADR 0003). Sin ellas el login queda desactivado, el resto anda. |
-   | `MYCHECKLIST_TOKEN_KEY`                    | Clave AES-256 de los tokens: `openssl rand -base64 32`. Sin clave el login falla cerrado.      |
-   | `MYCHECKLIST_PUBLIC_URL`                   | `https://checklist.wefaber.net`. Arma el callback y activa cookies `Secure`.                   |
-   | `MYCHECKLIST_TAILNET_URL`                  | `http://vps-660e4a8c.tail7f613b.ts.net` (vhost de la tailnet, paso 5).                         |
+   | Variable                                   | Qué es                                                                                                  |
+   | ------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+   | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | Credenciales de la GitHub App (ADR 0003). Sin ellas el login queda desactivado, el resto anda.          |
+   | `MYCHECKLIST_TOKEN_KEY`                    | Clave AES-256 de los tokens: `openssl rand -base64 32`. Sin clave el login falla cerrado.               |
+   | `MYCHECKLIST_PUBLIC_URL`                   | `https://checklist.wefaber.net`. Arma el callback y activa cookies `Secure`.                            |
+   | `MYCHECKLIST_TAILNET_URL`                  | `http://vps-660e4a8c.tail7f613b.ts.net` (vhost de la tailnet, paso 5).                                  |
    | `GITHUB_APP_ID`                            | Id de la GitHub App (Settings › Developer settings › GitHub Apps › _About_). Links a GitHub (ADR 0006). |
-   | `GITHUB_APP_PRIVATE_KEY`                   | Clave privada de la App (`.pem`), con los saltos de línea como `\n` literales en una sola línea. |
+   | `GITHUB_APP_PRIVATE_KEY`                   | Clave privada de la App (`.pem`), con los saltos de línea como `\n` literales en una sola línea.        |
 
    `GITHUB_APP_ID` y `GITHUB_APP_PRIVATE_KEY` son opcionales y van juntas: con ellas el servidor firma un JWT de la App y
    consulta lo público con un token de instalación de solo lectura (permisos _Issues_ y _Pull requests_: _Read_). La App
@@ -44,8 +44,9 @@ systemd.
    **Estado actual:** `MYCHECKLIST_PUBLIC_URL`, `MYCHECKLIST_TAILNET_URL` y `MYCHECKLIST_TOKEN_KEY` cargados;
    `GITHUB_CLIENT_ID` y `GITHUB_CLIENT_SECRET` vacíos, así que el login está desactivado (`loginAvailable: false`)
    hasta que se cree la GitHub App.
+
 4. `sudo cp deploy/mychecklist@.service /etc/systemd/system/ && sudo systemctl daemon-reload`
-<<<<<<< HEAD
+   <<<<<<< HEAD
 5. Nginx: `deploy/nginx/mychecklist.conf` en `sites-available` + symlink, DNS de `checklist.wefaber.net`
    (CNAME proxied al apex, `~/deploy/cf-add-subdomain.py`), TLS con `certbot certonly --dns-cloudflare`
    y un `snippets/mychecklist-active.conf` inicial (`set $mychecklist_port 4161;`,
@@ -57,17 +58,18 @@ systemd.
 7. Backup horario: `~/deploy/mychecklist-backup.sh` + `mychecklist-backup.{service,timer}`
    (`sqlite3` no está instalado; el script usa `python3` + `VACUUM INTO`, verifica `integrity_check` y rota a 7 días).
    Restauración: parar el slot, copiar el `.db` del backup sobre `~/data/mychecklist/mychecklist.db`, arrancar.
-=======
-5. Nginx: `deploy/nginx/mychecklist.conf` en `sites-available` + symlink, DNS de `checklist.wefaber.net`, TLS como los
+   \=======
+8. Nginx: `deploy/nginx/mychecklist.conf` en `sites-available` + symlink, DNS de `checklist.wefaber.net`, TLS como los
    otros vhosts y un `snippets/mychecklist-active.conf` inicial (`set $mychecklist_port 4161;`,
    `set $mychecklist_tailnet_port 4163;` y `set $mychecklist_root /home/hermes/mychecklist/blue/dist/web;`).
    El vhost de la tailnet es `deploy/nginx/mychecklist-tailnet.conf`: es una plantilla, hay que completar la IP de
    Tailscale y el nombre antes de instalarla.
-6. sudoers del usuario del runner, sin contraseña y limitado a: `systemctl start|stop|status|reload` sobre
+9. sudoers del usuario del runner, sin contraseña y limitado a: `systemctl start|stop|status|reload` sobre
    `mychecklist@*` y `nginx`, `nginx -t` y `tee /etc/nginx/snippets/mychecklist-active.conf`.
-7. Backup horario: `sqlite3 /home/hermes/data/mychecklist/mychecklist.db "VACUUM INTO '/home/hermes/data/mychecklist/backups/$(date +%F-%H).db'"`
-   (timer de systemd) y un simulacro de restauración antes de abrirlo.
->>>>>>> origin/main
+10. Backup horario: `sqlite3 /home/hermes/data/mychecklist/mychecklist.db "VACUUM INTO '/home/hermes/data/mychecklist/backups/$(date +%F-%H).db'"`
+    (timer de systemd) y un simulacro de restauración antes de abrirlo.
+
+> > > > > > > origin/main
 
 ## Pendientes conocidos
 
