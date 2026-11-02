@@ -103,6 +103,7 @@ jobs     ┘
 - **Config:** `GITHUB_APP_ID` y `GITHUB_APP_PRIVATE_KEY` (opcionales, `deploy/README.md`). Sin ellas todo se resuelve con
   el token de quien mira.
 - **Verificación con GitHub real:** `GITHUB_TOKEN=$(gh auth token) bun scripts/github-live.ts <url>...`.
+
 ## Code Mode (M5)
 
 - **Tokens** (ADR 0007): `api_tokens`, `mck_` + 32 bytes en base64url, solo el sha256 en la base y el secreto visible una

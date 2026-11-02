@@ -5,7 +5,7 @@ proyecto del org en GitHub Projects.
 
 | #   | Qué                                                                                                       | Se verifica                                                                         |
 | --- | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| M0  | Esqueleto: `web/`, Elysia con `/health` y `/ready`, migraciones, tooling, docs, deploy y spike de QuickJS | `bun run check` en verde; `/ready` 200 en `checklist.wefaber.net`                   |
+| M0  | Esqueleto: `web/`, Elysia con `/health` y `/ready`, migraciones, tooling, docs, deploy y spike de QuickJS | `bun run verify` en verde; `/ready` 200 en `checklist.wefaber.net`                  |
 | M1  | Login con GitHub, sesiones, org personal, dos listeners, `scoped.ts`                                      | Tests de aislamiento; una org `team` pedida por el listener público da `FORBIDDEN`  |
 | M2  | Listas e items: orden fraccional, subitems, `Dock`, `Mod+K`, deshacer, SSE y temas                        | Flujos en el navegador; axe en `/design` con los 4 temas                            |
 | M3  | Markdown, backlinks, adjuntos                                                                             | Tests del parser de refs; pegar una imagen en el navegador                          |

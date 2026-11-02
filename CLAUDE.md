@@ -13,7 +13,7 @@ App de listas y tareas (web + desktop). Herramienta de la casa WeFaber, repo `we
 
 ## Reglas del repo
 
-- Bun, nunca npm/npx. TypeScript `strict`. `bun run check` en verde antes de cada commit; no se usa `--no-verify`.
+- Bun, nunca npm/npx. TypeScript `strict`. `bun run verify` en verde antes de cada commit; no se usa `--no-verify`.
 - Una sola vía de mutación: GraphQL, Code Mode, import y jobs llaman a `server/services/*`.
 - SQL solo bajo `server/db/`; las tablas con dueño (`org_id`) solo las toca `server/db/scoped.ts`
   (`scripts/check-scoped.ts` lo exige).
