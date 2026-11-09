@@ -7,7 +7,7 @@ import { previousSibling, type Placement } from './tree'
 import { useUndoStack } from './undo'
 
 const LIST = 'id name position open total'
-const ITEM = `id listId parentId position text done doneAt createdAt updatedAt mentions { ${MENTION} }`
+const ITEM = `id listId parentId position text done doneAt resolution createdAt updatedAt mentions { ${MENTION} }`
 
 /** Llamadas crudas al servidor, sin deshacer ni avisos: las usan las acciones y también sus inversas. */
 function raw(orgId: string) {
@@ -53,10 +53,11 @@ function raw(orgId: string) {
           a: place.afterId ?? null,
         },
       ).then((r) => r.createItem),
-    setDone: (id: string, done: boolean) =>
+    /** `resolution` omitida deja la que hay; texto en blanco la borra. Solo se envía al completar. */
+    setDone: (id: string, done: boolean, resolution?: string) =>
       gql(
-        `mutation($o: ID!, $id: ID!, $d: Boolean!) { setItemDone(orgId: $o, id: $id, done: $d) { id } }`,
-        { ...o, id, d: done },
+        `mutation($o: ID!, $id: ID!, $d: Boolean!, $r: String) { setItemDone(orgId: $o, id: $id, done: $d, resolution: $r) { id } }`,
+        { ...o, id, d: done, r: resolution },
       ),
     editText: (id: string, text: string) =>
       gql(
@@ -208,12 +209,29 @@ export function useActions(orgId: string) {
       return item
     },
 
-    async setDone(item: Item, done: boolean) {
+    /**
+     * Completa o reabre. Al completar puede llevar la resolución (omitida deja la que hay). Deshacer reabre: la
+     * resolución se conserva, igual que al reabrir a mano.
+     */
+    async setDone(item: Item, done: boolean, resolution?: string) {
       // Optimista: la casilla responde al instante; el servidor confirma o se revierte con el refresco.
       client.setQueryData<Item[]>(keys.items(orgId, item.listId), (old) =>
-        old?.map((i) => (i.id === item.id ? { ...i, done } : i)),
+        old?.map((i) =>
+          i.id === item.id
+            ? {
+                ...i,
+                done,
+                resolution:
+                  done && resolution !== undefined
+                    ? resolution.trim() || null
+                    : i.resolution,
+              }
+            : i,
+        ),
       )
-      const ok = await attempt(() => api.setDone(item.id, done))
+      const ok = await attempt(() =>
+        api.setDone(item.id, done, done ? resolution : undefined),
+      )
       if (ok)
         useUndoStack.getState().push({
           label: done ? t('undo.complete') : t('undo.reopen'),
@@ -222,6 +240,17 @@ export function useActions(orgId: string) {
             refresh(client, orgId)
           },
         })
+    },
+
+    /** Cambia la resolución de un item que ya está completo; deshacer restaura la anterior. */
+    async setResolution(item: Item, resolution: string) {
+      if (resolution.trim() === (item.resolution ?? '')) return true
+      const ok = await attempt(() => api.setDone(item.id, true, resolution))
+      if (ok)
+        undoable(t('undo.resolution'), t('toast.resolutionSaved'), () =>
+          api.setDone(item.id, true, item.resolution ?? ''),
+        )
+      return ok !== null
     },
 
     async editText(item: Item, text: string) {

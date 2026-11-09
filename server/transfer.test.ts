@@ -611,3 +611,88 @@ describe('validación', () => {
     )
   })
 })
+
+describe('resolución', () => {
+  test('viaja en el export y el import la guarda con las menciones reescritas', async () => {
+    const w = await world()
+    const { deps, callerA: c, orgA: orgId } = w
+    const list = createList(deps, c, { orgId, name: 'Ad Astra', afterId: null })
+    const mk = (text: string) =>
+      createItem(deps, c, {
+        orgId,
+        listId: list.id,
+        parentId: null,
+        afterId: null,
+        text,
+      })
+    const target = mk('Fórmula de vehículos')
+    const i = mk('Definir sistemas')
+    setItemDone(deps, c, {
+      orgId,
+      id: i.id,
+      done: true,
+      resolution: `Los puntos son X, Y, Z. Ver [[${target.id}]]`,
+    })
+
+    const original = await w.exported(w.orgA)
+    const exportedItem = original.lists[0]!.items.find((x) => x.id === i.id)!
+    expect(exportedItem.resolution).toBe(
+      `Los puntos son X, Y, Z. Ver [[${target.id}]]`,
+    )
+
+    const res = await w.importTo(w.orgB, JSON.stringify(original))
+    expect(res.status).toBe(201)
+    const copy = await w.exported(w.orgB, w.b.cookie)
+    const copied = copy.lists[0]!.items.find(
+      (x) => x.text === 'Definir sistemas',
+    )!
+    const copiedTarget = copy.lists[0]!.items.find(
+      (x) => x.text === 'Fórmula de vehículos',
+    )!
+    expect(copied.resolution).toBe(
+      `Los puntos son X, Y, Z. Ver [[${copiedTarget.id}]]`,
+    )
+    expect(copied.id).not.toBe(i.id)
+    expect(
+      listBacklinks(w.deps, w.callerB, w.orgB, copiedTarget.id).map(
+        (m) => m.id,
+      ),
+    ).toEqual([copied.id])
+  })
+
+  test('un export anterior, sin el campo, se importa con la resolución en null', async () => {
+    const w = await world()
+    const { deps, callerA: c, orgA: orgId } = w
+    const list = createList(deps, c, { orgId, name: 'L', afterId: null })
+    createItem(deps, c, {
+      orgId,
+      listId: list.id,
+      parentId: null,
+      afterId: null,
+      text: 'a',
+    })
+    const file = (await w.exported(w.orgA)) as any
+    for (const l of file.lists) for (const x of l.items) delete x.resolution
+    const res = await w.importTo(w.orgB, JSON.stringify(file))
+    expect(res.status).toBe(201)
+    const copy = await w.exported(w.orgB, w.b.cookie)
+    expect(copy.lists[0]!.items[0]!.resolution).toBeNull()
+  })
+
+  test('una resolución que no es texto no entra', async () => {
+    const w = await world()
+    const { deps, callerA: c, orgA: orgId } = w
+    const list = createList(deps, c, { orgId, name: 'L', afterId: null })
+    createItem(deps, c, {
+      orgId,
+      listId: list.id,
+      parentId: null,
+      afterId: null,
+      text: 'a',
+    })
+    const file = (await w.exported(w.orgA)) as any
+    file.lists[0].items[0].resolution = 42
+    const res = await w.importTo(w.orgB, JSON.stringify(file))
+    expect(res.status).toBe(400)
+  })
+})

@@ -18,6 +18,7 @@ const item = (id: string, parentId: string | null = null): Item => ({
   text: id,
   done: false,
   doneAt: null,
+  resolution: null,
   createdAt: '',
   updatedAt: '',
   mentions: [],

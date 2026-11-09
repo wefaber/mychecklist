@@ -35,6 +35,8 @@ nunca tiene scroll horizontal, a 320 px en adelante.
 - **Lista** (`ListPage`): filtros sobre el contenido (todos, sin completar, completados) con el conteo de lo que
   queda; filas con casilla, texto que abre el detalle, subitems indentados y un menú de acciones. Estado nunca solo por
   color: la casilla cambia de forma y el texto completado va tachado.
+- **Resolución:** el detalle tiene un campo propio con el botón "Completar con resolución"; en la fila va una línea
+  muted con la primera línea de la resolución. Completar con la casilla sigue siendo un toque (deshacer, no confirmar).
 - **Detalle** (`ItemDock`): a la derecha, sobre la lista. A partir de 1024 px la lista se corre a la izquierda
   (`--dock-inset`) para no quedar tapada; en pantallas angostas el panel la cubre.
 - **Paleta** (`CommandPalette`): comandos, ir a una lista y búsqueda de items en el servidor. **Ayuda**

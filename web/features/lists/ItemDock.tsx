@@ -1,6 +1,6 @@
 import { useNavigate } from '@tanstack/react-router'
 import { titleOf } from '@shared/title'
-import { Dock, EmptyState, IconButton } from '@wefaber/ui'
+import { Button, Dock, EmptyState, IconButton } from '@wefaber/ui'
 import { AtSign, Paperclip, Square, SquareCheck, Trash2, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { TextArea } from '../../components/TextField'
@@ -90,6 +90,8 @@ function DockBody({
   const [draft, setDraft] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const [status, setStatus] = useState('')
+  // Borrador de la resolución: con el item abierto se guarda al completarlo; con el item completo, al salir del campo.
+  const [resDraft, setResDraft] = useState<string | null>(null)
   // Rango del texto que reemplaza lo que se elija en el selector (el `[[` recién escrito, o el cursor).
   const [picker, setPicker] = useState<[number, number] | null>(null)
   // Items elegidos en el selector que el servidor todavía no devolvió como menciones (el texto no se guardó).
@@ -101,6 +103,7 @@ function DockBody({
   const navigate = useNavigate()
   const backlinks = useBacklinks(orgId, item.id)
   const text = draft ?? item.text
+  const resolution = resDraft ?? item.resolution ?? ''
   const children = items.filter((i) => i.parentId === item.id)
   const parent = item.parentId
     ? items.find((i) => i.id === item.parentId)
@@ -155,6 +158,23 @@ function DockBody({
     setPicker(null)
     leaving.current = false
     requestAnimationFrame(() => textarea.current?.focus())
+  }
+
+  /** Completa el item con lo que haya en el campo de resolución (omitida, deja la que tenía). */
+  const complete = () => {
+    const withResolution = resDraft ?? undefined
+    setResDraft(null)
+    void actions.setDone(item, true, withResolution)
+  }
+
+  const saveResolution = async () => {
+    if (!item.done || resDraft === null) return
+    const next = resDraft
+    setResDraft(null)
+    if (await actions.setResolution(item, next)) {
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    }
   }
 
   const save = async () => {
@@ -302,7 +322,57 @@ function DockBody({
             onOpenItem={openItem}
           />
         </div>
+        {resolution.trim() ? (
+          <div className="rounded-card bg-surface-2 p-3 text-body">
+            <p className="mb-1 text-meta font-medium text-muted">
+              {t('dock.resolution')}
+            </p>
+            <Markdown
+              text={resolution}
+              orgId={orgId}
+              mentions={item.mentions}
+              mode="full"
+              onOpenItem={openItem}
+            />
+          </div>
+        ) : null}
       </section>
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="dock-resolution" className="text-meta font-medium">
+          {t('dock.resolution')}
+        </label>
+        <TextArea
+          id="dock-resolution"
+          value={resolution}
+          rows={3}
+          maxLength={4000}
+          aria-describedby="dock-resolution-help"
+          onChange={(e) => setResDraft(e.target.value)}
+          onBlur={saveResolution}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+              e.preventDefault()
+              if (item.done) void saveResolution()
+              else complete()
+            }
+          }}
+        />
+        <p id="dock-resolution-help" className="text-meta text-muted">
+          {item.done ? t('dock.resolutionDone') : t('dock.resolutionOpen')}
+        </p>
+        {!item.done ? (
+          <Button
+            variant="secondary"
+            className="self-start"
+            disabled={!resolution.trim()}
+            onClick={complete}
+          >
+            <SquareCheck aria-hidden size={14} />
+            {t('dock.completeWith')}
+          </Button>
+        ) : null}
+      </div>
 
       <MentionPicker
         open={picker !== null}
@@ -330,7 +400,7 @@ function DockBody({
         type="button"
         role="checkbox"
         aria-checked={item.done}
-        onClick={() => actions.setDone(item, !item.done)}
+        onClick={() => (item.done ? actions.setDone(item, false) : complete())}
         className="flex items-center gap-2 self-start rounded-control px-1 py-1 text-body"
       >
         {item.done ? (

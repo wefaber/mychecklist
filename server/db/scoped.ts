@@ -42,6 +42,8 @@ export type ItemRow = {
   position: string
   text: string
   doneAt: number | null
+  /** Con qué se cerró el item (Markdown); `null` si no se escribió una. */
+  resolution: string | null
   createdAt: number
   updatedAt: number
   deletedAt: number | null
@@ -116,6 +118,7 @@ export type Scope = {
         position: string
         text: string
         doneAt?: number | null
+        resolution?: string | null
         createdAt?: number
         updatedAt?: number
         deletedAt?: number | null
@@ -124,6 +127,8 @@ export type Scope = {
     ): void
     setText(id: string, text: string, now: number): void
     setDone(id: string, doneAt: number | null, now: number): void
+    /** Guarda (o borra con `null`) la resolución sin tocar `doneAt`. */
+    setResolution(id: string, resolution: string | null, now: number): void
     /** Cambia de lista, de padre y de posición; los subitems siguen a su padre a la lista nueva. */
     place(
       id: string,
@@ -226,6 +231,7 @@ type ItemSqlRow = {
   position: string
   text: string
   done_at: number | null
+  resolution: string | null
   created_at: number
   updated_at: number
   deleted_at: number | null
@@ -238,6 +244,7 @@ const toItem = (r: ItemSqlRow): ItemRow => ({
   position: r.position,
   text: r.text,
   doneAt: r.done_at,
+  resolution: r.resolution,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
   deletedAt: r.deleted_at,
@@ -249,7 +256,7 @@ const LIST_SELECT = `SELECT l.id, l.name, l.position, l.created_at, l.updated_at
   FROM lists l`
 
 const ITEM_COLUMNS =
-  'id, list_id, parent_id, position, text, done_at, created_at, updated_at, deleted_at'
+  'id, list_id, parent_id, position, text, done_at, resolution, created_at, updated_at, deleted_at'
 
 type HitSqlRow = {
   id: string
@@ -483,7 +490,7 @@ export function openScope(
       },
       insert(row, now) {
         db.query(
-          'INSERT INTO items (id, org_id, list_id, parent_id, position, text, done_at, created_by, created_at, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          'INSERT INTO items (id, org_id, list_id, parent_id, position, text, done_at, resolution, created_by, created_at, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         ).run(
           row.id,
           orgId,
@@ -492,6 +499,7 @@ export function openScope(
           row.position,
           row.text,
           row.doneAt ?? null,
+          row.resolution ?? null,
           userId,
           row.createdAt ?? now,
           row.updatedAt ?? now,
@@ -507,6 +515,11 @@ export function openScope(
         db.query(
           'UPDATE items SET done_at = ?, updated_at = ? WHERE org_id = ? AND id = ?',
         ).run(doneAt, now, orgId, id)
+      },
+      setResolution(id, resolution, now) {
+        db.query(
+          'UPDATE items SET resolution = ?, updated_at = ? WHERE org_id = ? AND id = ?',
+        ).run(resolution, now, orgId, id)
       },
       place(id, to, now) {
         db.query(
@@ -584,14 +597,15 @@ export function openScope(
               text: string
               done_at: number | null
             },
-            [string, string, number]
+            [string, string, string, number]
           >(
             `SELECT i.id, i.list_id, l.name AS list_name, i.text, i.done_at
              FROM items i JOIN lists l ON l.id = i.list_id AND l.org_id = i.org_id
-             WHERE i.org_id = ? AND i.deleted_at IS NULL AND l.deleted_at IS NULL AND i.text LIKE ? ESCAPE '\\'
+             WHERE i.org_id = ? AND i.deleted_at IS NULL AND l.deleted_at IS NULL
+               AND (i.text LIKE ? ESCAPE '\\' OR i.resolution LIKE ? ESCAPE '\\')
              ORDER BY i.updated_at DESC LIMIT ?`,
           )
-          .all(orgId, `%${escapeLike(query)}%`, limit)
+          .all(orgId, `%${escapeLike(query)}%`, `%${escapeLike(query)}%`, limit)
           .map((r) => ({
             id: r.id,
             listId: r.list_id,
