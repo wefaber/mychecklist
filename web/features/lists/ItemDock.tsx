@@ -193,7 +193,7 @@ function DockBody({
     <div
       role="complementary"
       aria-label={t('dock.title')}
-      className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto rounded-panel border border-border bg-surface p-4 shadow-float"
+      className="touch-roomy flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto rounded-panel border border-border bg-surface p-4 shadow-float"
       onKeyDown={(e) => {
         if (e.key === 'Escape') {
           e.stopPropagation()

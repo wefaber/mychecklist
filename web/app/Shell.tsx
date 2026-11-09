@@ -143,7 +143,7 @@ export function AppLayout() {
       >
         {t('app.skip')}
       </a>
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-border bg-bg px-4">
+      <header className="touch-roomy sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-border bg-bg px-4">
         <Link to="/" className="font-display text-h3">
           {t('app.name')}
         </Link>
