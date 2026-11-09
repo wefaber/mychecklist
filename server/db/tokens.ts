@@ -103,12 +103,25 @@ export function findApiToken(
   now: number,
 ): ApiTokenRow | null {
   if (!secret.startsWith(TOKEN_PREFIX)) return null
+  return findApiTokenByHash(db, sha256Hex(secret), ingress, now)
+}
+
+/**
+ * Lo mismo por el sha256 del token. Detrás del gateway llega solo el hash (ADR 0013): el gateway importa el `mck_`
+ * por su hash y el producto lo reconoce acá, con las mismas reglas de puerta, vencimiento y revocación.
+ */
+export function findApiTokenByHash(
+  db: Database,
+  hash: string,
+  ingress: Ingress,
+  now: number,
+): ApiTokenRow | null {
   const row = db
     .query<Raw, [string, string, number]>(
       `SELECT ${COLUMNS} FROM api_tokens
        WHERE token_sha256 = ? AND ingress = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?)`,
     )
-    .get(sha256Hex(secret), ingress, now)
+    .get(hash, ingress, now)
   return row ? toRow(row) : null
 }
 

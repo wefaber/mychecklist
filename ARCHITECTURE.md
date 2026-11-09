@@ -139,6 +139,10 @@ jobs     ┘
   `initialize`/`ping`/`tools/list`/`tools/call`). Bearer `Authorization`; un `Origin` ajeno da 403; la cookie de sesión no
   sirve acá ni el Bearer en `/graphql`. Nginx proxea `/codemode/` y `/mcp` en los dos vhosts (cuerpo de hasta 64 KB).
 - **Nombres**: el objeto es `codemode.checklist.*`; `checklist.*` sigue siendo un alias durante una minor (ADR 0010).
+- **Detrás del gateway** (ADR 0013): con `WCM_GATEWAY_SECRET`, `routes.ts` acepta `x-wcm-via: gateway` con identidad
+  firmada (`verifyIdentity`, HMAC-SHA256, 60 s), busca el `mck_` por `x-wcm-token-hash` (`findApiTokenByHash`, mismas
+  reglas de puerta, vencimiento y revocación) y usa como scopes la intersección entre los del gateway y el modo del
+  token (`gatewayScopes`). La org y el usuario salen del token del producto. La entrada directa con `mck_` no cambia.
 - **Ergonomía**: en `lists.create`, `items.create` y los `move`, `afterId` omitido es "al final" y `null` "al principio".
   Los errores del host llegan al código como `Error` con `message` `CODIGO: texto`.
 
@@ -182,6 +186,10 @@ jobs     ┘
   `initialize`/`ping`/`tools/list`/`tools/call`). Bearer `Authorization`; un `Origin` ajeno da 403; la cookie de sesión no
   sirve acá ni el Bearer en `/graphql`. Nginx proxea `/codemode/` y `/mcp` en los dos vhosts (cuerpo de hasta 64 KB).
 - **Nombres**: el objeto es `codemode.checklist.*`; `checklist.*` sigue siendo un alias durante una minor (ADR 0010).
+- **Detrás del gateway** (ADR 0013): con `WCM_GATEWAY_SECRET`, `routes.ts` acepta `x-wcm-via: gateway` con identidad
+  firmada (`verifyIdentity`, HMAC-SHA256, 60 s), busca el `mck_` por `x-wcm-token-hash` (`findApiTokenByHash`, mismas
+  reglas de puerta, vencimiento y revocación) y usa como scopes la intersección entre los del gateway y el modo del
+  token (`gatewayScopes`). La org y el usuario salen del token del producto. La entrada directa con `mck_` no cambia.
 - **Ergonomía**: en `lists.create`, `items.create` y los `move`, `afterId` omitido es "al final" y `null` "al principio".
   Los errores del host llegan al código como `Error` con `message` `CODIGO: texto`.
 

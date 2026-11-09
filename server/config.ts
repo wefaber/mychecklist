@@ -12,6 +12,11 @@ export type Config = {
   filesDir: string
   /** Clave AES-256 de los tokens guardados. Sin clave, el login falla cerrado. */
   tokenKey: Uint8Array | null
+  /**
+   * Clave HMAC compartida con el gateway de Code Mode (`WCM_GATEWAY_SECRET`, 32+ caracteres). Sin ella, las llamadas
+   * con identidad del gateway se rechazan (ADR 0013); los tokens `mck_` siguen entrando directo.
+   */
+  gatewaySecret: string | null
   /** Solo desarrollo: habilita `GET /auth/dev` (sesión de prueba sin GitHub). Nunca en producción. */
   devLogin: boolean
 }
@@ -21,6 +26,13 @@ function decodeKey(raw: string): Uint8Array {
   if (key.length !== 32)
     throw new Error('MYCHECKLIST_TOKEN_KEY debe ser base64 de 32 bytes')
   return key
+}
+
+function gatewaySecret(raw: string | undefined): string | null {
+  if (!raw) return null
+  if (raw.length < 32)
+    throw new Error('WCM_GATEWAY_SECRET debe tener al menos 32 caracteres')
+  return raw
 }
 
 /** Lee la configuración del entorno (`~/deploy/env/mychecklist.env` en el servidor, `.env.local` en local). */
@@ -53,6 +65,7 @@ export function loadConfig(
             privateKey: env.GITHUB_APP_PRIVATE_KEY.replace(/\\n/g, '\n'),
           }
         : null,
+    gatewaySecret: gatewaySecret(env.WCM_GATEWAY_SECRET),
     tokenKey: env.MYCHECKLIST_TOKEN_KEY
       ? decodeKey(env.MYCHECKLIST_TOKEN_KEY)
       : null,
