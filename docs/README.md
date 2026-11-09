@@ -29,6 +29,7 @@
 | [fixes-2026-11-09-v0.10.0/](fixes-2026-11-09-v0.10.0/README.md)                                | Resolución al completar un item                         |
 | [fixes-2026-11-09-v0.13.0/](fixes-2026-11-09-v0.13.0/README.md)                                | MyChecklist detrás del gateway de Code Mode             |
 | [fixes-2026-11-09-v0.12.0/](fixes-2026-11-09-v0.12.0/README.md)                                | Identificador corto y link de un item                   |
+| [fixes-2026-11-09-v0.14.0/](fixes-2026-11-09-v0.14.0/README.md)                                | Completar exige las casillas marcadas                   |
 | `fixes-<fecha>-v<versión>/`                                                                    | Correcciones y mejoras en lote, con checkbox por ítem   |
 
 Los ADR aceptados no se editan: se reemplazan con uno nuevo que los marca como superados.

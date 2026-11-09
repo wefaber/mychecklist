@@ -1,3 +1,4 @@
+import { closeBlocker } from '@shared/checkboxes'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { t } from '../../i18n'
 import { gql, GraphQLRequestError } from '../../lib/graphql'
@@ -230,6 +231,12 @@ export function useActions(orgId: string) {
      * resolución se conserva, igual que al reabrir a mano.
      */
     async setDone(item: Item, done: boolean, resolution?: string) {
+      // Con casillas sin marcar no se completa: se avisa acá y no se pinta el cambio para después revertirlo.
+      const blocked = done && !item.done ? closeBlocker(item.text) : null
+      if (blocked) {
+        show({ kind: 'error', text: blocked })
+        return
+      }
       // Optimista: la casilla responde al instante; el servidor confirma o se revierte con el refresco.
       client.setQueryData<Item[]>(keys.items(orgId, item.listId), (old) =>
         old?.map((i) =>

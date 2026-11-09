@@ -201,3 +201,59 @@ describe('resolución por GraphQL', () => {
     expect(bad.errors?.[0]?.extensions?.code).toBe('INVALID_INPUT')
   })
 })
+
+describe('completar exige las casillas marcadas', () => {
+  test('con casillas sin marcar no se completa y el item no cambia', async () => {
+    const w = await world()
+    const i = w.item('Entrega\n\n- [x] diseño\n- [ ] revisión\n- [ ] deploy')
+    expect(() => w.done(i.id, true)).toThrow(
+      'Faltan 2 casillas por marcar para completar el item',
+    )
+    expect(w.get(i.id).doneAt).toBeNull()
+    // Tampoco con resolución.
+    expect(() => w.done(i.id, true, 'listo igual')).toThrow('casillas')
+    expect(w.get(i.id).resolution).toBeNull()
+  })
+
+  test('con todas marcadas se completa, y sin casillas también', async () => {
+    const w = await world()
+    const a = w.item('- [x] uno\n- [X] dos')
+    expect(w.done(a.id, true).doneAt).not.toBeNull()
+    const b = w.item('sin casillas')
+    expect(w.done(b.id, true).doneAt).not.toBeNull()
+  })
+
+  test('marcar la que faltaba, editando el texto, lo deja completar', async () => {
+    const w = await world()
+    const i = w.item('- [ ] única')
+    expect(() => w.done(i.id, true)).toThrow('Falta 1 casilla')
+    updateItemText(w.deps, w.caller, {
+      orgId: w.orgId,
+      id: i.id,
+      text: '- [x] única',
+    })
+    expect(w.done(i.id, true).doneAt).not.toBeNull()
+  })
+
+  test('reabrir y cambiar la resolución de uno ya completo no piden nada', async () => {
+    const w = await world()
+    const i = w.item('- [x] hecho')
+    w.done(i.id, true)
+    // El texto se edita después y queda una casilla abierta: el item ya está completo.
+    updateItemText(w.deps, w.caller, {
+      orgId: w.orgId,
+      id: i.id,
+      text: '- [x] hecho\n- [ ] nueva',
+    })
+    expect(w.done(i.id, true, 'nota').resolution).toBe('nota')
+    expect(w.done(i.id, false).doneAt).toBeNull()
+    // Volver a completar sí lo exige.
+    expect(() => w.done(i.id, true)).toThrow('Falta 1 casilla')
+  })
+
+  test('una casilla dentro de código no bloquea', async () => {
+    const w = await world()
+    const i = w.item('```\n- [ ] ejemplo\n```')
+    expect(w.done(i.id, true).doneAt).not.toBeNull()
+  })
+})

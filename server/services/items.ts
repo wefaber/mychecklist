@@ -1,3 +1,4 @@
+import { closeBlocker } from '../../shared/checkboxes'
 import { between } from '../../shared/order'
 import { extractRefs, resolveShortRefs } from '../../shared/refs'
 import { formatShortId, parseShortId } from '../../shared/short-id'
@@ -367,6 +368,11 @@ export function setItemDone(
             multiline: true,
           })
   const toggles = (item.doneAt !== null) !== input.done
+  // Cerrar exige las casillas del texto marcadas (reabrir, o cambiar la resolución de uno ya completo, no).
+  if (toggles && input.done) {
+    const blocked = closeBlocker(item.text)
+    if (blocked) throw new DomainError('INVALID_INPUT', blocked)
+  }
   const resolutionChanged = resolution !== item.resolution
   if (toggles || resolutionChanged) {
     db.transaction(() => {

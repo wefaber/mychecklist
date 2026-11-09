@@ -67,6 +67,10 @@ jobs     ┘
   acepta solo al completar (omitida deja la que hay, en blanco la borra; reabrir la conserva). Las menciones `[[id]]`
   de la resolución entran en `item_refs` junto con las del texto (`refsSource` en `services/items.ts`), y la búsqueda
   también la mira.
+- **Completar con casillas:** `setItemDone` no completa un item (pasa de abierto a completo) si su texto tiene casillas
+  de Markdown (`- [ ]`) sin marcar: `INVALID_INPUT` con "Faltan N casillas por marcar…". `shared/checkboxes.ts` las
+  cuenta sobre el árbol de Markdown (el código no cuenta, las listas anidadas sí) y lo usan el servicio y la UI, que
+  avisa antes de pedir. Reabrir y cambiar la resolución de uno ya completo no lo exigen.
 - **Identificador corto:** `<ORG>-<LISTA>-<NUM>` (ADR 0012). `orgs.code` (solo equipos), `lists.code` y `items.number`
   (contador `lists.item_seq`, nunca reutiliza) salen de la migración 0011; dos triggers numeran lo que inserte o mueva
   un slot anterior. `resolveItemId` y `withUlids` (`services/items.ts`) convierten `AA-12` / `[[AA-12]]` al ULID al
