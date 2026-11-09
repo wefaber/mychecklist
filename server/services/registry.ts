@@ -31,6 +31,7 @@ import {
   listLists,
   moveList,
   renameList,
+  setListCode,
   restoreList,
   type ListView,
 } from './lists'
@@ -77,15 +78,25 @@ const List = Type.Object(
   {
     id: Type.String(),
     name: Type.String(),
+    code: Type.Union([Type.String(), Type.Null()], {
+      description:
+        'Código corto de la lista: el medio del identificador de sus items (`AA` en `AA-12`).',
+    }),
     open: Type.Integer({ description: 'Items sin completar.' }),
     total: Type.Integer({ description: 'Items vivos.' }),
   },
   { $id: 'List' },
 )
 
+const ShortId = Type.Union([Type.String(), Type.Null()], {
+  description:
+    'Identificador corto (`AA-12`, o `WF-AA-12` en una org con código); sirve donde se pide un id y como `[[AA-12]]` en un texto.',
+})
+
 const MentionSchema = Type.Object(
   {
     id: Type.String(),
+    shortId: ShortId,
     listId: Type.String(),
     listName: Type.String(),
     title: Type.String(),
@@ -97,6 +108,10 @@ const MentionSchema = Type.Object(
 const Item = Type.Object(
   {
     id: Type.String(),
+    number: Type.Union([Type.Integer(), Type.Null()], {
+      description: 'Número del item dentro de su lista.',
+    }),
+    shortId: ShortId,
     listId: Type.String(),
     parentId: Type.Union([Type.String(), Type.Null()]),
     text: Type.String({ description: 'Markdown.' }),
@@ -115,6 +130,7 @@ const Item = Type.Object(
 const Hit = Type.Object(
   {
     id: Type.String(),
+    shortId: ShortId,
     listId: Type.String(),
     listName: Type.String(),
     text: Type.String(),
@@ -164,6 +180,7 @@ const iso = (ms: number) => new Date(ms).toISOString()
 const listOut = (l: ListView): Static<typeof List> => ({
   id: l.id,
   name: l.name,
+  code: l.code,
   open: l.open,
   total: l.total,
 })
@@ -172,6 +189,8 @@ const mentionOut = (m: Mention): Static<typeof MentionSchema> => ({ ...m })
 
 const itemOut = (i: ItemView): Static<typeof Item> => ({
   id: i.id,
+  number: i.number,
+  shortId: i.shortId,
   listId: i.listId,
   parentId: i.parentId,
   text: i.text,
@@ -280,6 +299,23 @@ const OPS = [
       listOut(renameList(ctx.deps, ctx.caller, { orgId: ctx.orgId, ...input })),
   }),
   defineOp({
+    id: 'checklist.lists.setCode',
+    scope: 'checklist:write',
+    verbException:
+      'Cambia solo el código corto; `update` sugeriría que se puede cambiar cualquier campo.',
+    summary:
+      'Cambia el código corto de una lista (2 a 8 letras mayúsculas o dígitos). Cambia el identificador de todos sus items.',
+    input: Type.Object(
+      { id: Id, code: Type.String({ minLength: 2, maxLength: 8 }) },
+      { additionalProperties: false },
+    ),
+    output: List,
+    handler: (ctx, input) =>
+      listOut(
+        setListCode(ctx.deps, ctx.caller, { orgId: ctx.orgId, ...input }),
+      ),
+  }),
+  defineOp({
     id: 'checklist.lists.move',
     scope: 'checklist:write',
     summary: `Mueve una lista. ${AFTER_DOC}`,
@@ -344,7 +380,8 @@ const OPS = [
   defineOp({
     id: 'checklist.items.get',
     scope: 'checklist:read',
-    summary: 'Un item vivo por id, o null si no existe.',
+    summary:
+      'Un item vivo por id o por identificador corto (`AA-12`), o null si no existe.',
     input: OnlyId,
     output: Type.Union([Item, Type.Null()]),
     handler: (ctx, { id }) => {
@@ -373,6 +410,7 @@ const OPS = [
         input.first ?? 20,
       ).map((h) => ({
         id: h.id,
+        shortId: h.shortId,
         listId: h.listId,
         listName: h.listName,
         text: h.text,

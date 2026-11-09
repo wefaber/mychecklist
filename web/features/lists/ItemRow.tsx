@@ -2,10 +2,12 @@ import { IconButton, Menu, MenuItem, MenuSeparator } from '@wefaber/ui'
 import {
   ArrowDown,
   ArrowUp,
+  Copy,
   CornerDownRight,
   GripVertical,
   IndentDecrease,
   IndentIncrease,
+  Link2,
   ListPlus,
   MessageSquareText,
   MoreHorizontal,
@@ -28,6 +30,8 @@ export type RowActions = {
   step(item: Item, dir: 'up' | 'down'): void
   indent(item: Item): void
   outdent(item: Item): void
+  copyId(item: Item): void
+  copyLink(item: Item): void
   keyDown(e: KeyboardEvent<HTMLElement>, item: Item): void
   dragStart(item: Item): void
   dragOver(item: Item, where: 'before' | 'after'): void
@@ -205,6 +209,13 @@ export function ItemRow({
               {t('item.moveTo', { name: l.name })}
             </MenuItem>
           ))}
+        <MenuSeparator />
+        <MenuItem icon={<Link2 size={16} />} onSelect={() => a.copyLink(item)}>
+          {t('item.copyLink')}
+        </MenuItem>
+        <MenuItem icon={<Copy size={16} />} onSelect={() => a.copyId(item)}>
+          {t('item.copyId')}
+        </MenuItem>
         <MenuSeparator />
         <MenuItem
           destructive

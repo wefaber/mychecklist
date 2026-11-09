@@ -7,6 +7,8 @@ import { apiUrl } from '../../lib/server'
 export type List = {
   id: string
   name: string
+  /** Código corto: el medio del identificador `AA-12` de sus items. */
+  code: string | null
   position: string
   open: number
   total: number
@@ -14,6 +16,9 @@ export type List = {
 
 export type Item = {
   id: string
+  number: number | null
+  /** Identificador corto (`AA-12`, o `WF-AA-12` en una org con código); `null` si la lista no tiene código. */
+  shortId: string | null
   listId: string
   parentId: string | null
   position: string
@@ -30,15 +35,16 @@ export type Item = {
 
 export type Hit = {
   id: string
+  shortId: string | null
   listId: string
   listName: string
   text: string
   done: boolean
 }
 
-const LIST = 'id name position open total'
-export const MENTION = 'id listId listName title done'
-const ITEM = `id listId parentId position text done doneAt resolution createdAt updatedAt mentions { ${MENTION} }`
+const LIST = 'id name code position open total'
+export const MENTION = 'id shortId listId listName title done'
+const ITEM = `id number shortId listId parentId position text done doneAt resolution createdAt updatedAt mentions { ${MENTION} }`
 
 export const keys = {
   lists: (orgId: string) => ['lists', orgId] as const,
@@ -101,7 +107,7 @@ export function useSearch(orgId: string | null, query: string) {
     queryFn: async () =>
       (
         await gql<{ org: { search: Hit[] } }>(
-          `query($o: ID!, $q: String!) { org(id: $o) { search(query: $q, first: 8) { id listId listName text done } } }`,
+          `query($o: ID!, $q: String!) { org(id: $o) { search(query: $q, first: 8) { id shortId listId listName text done } } }`,
           { o: orgId, q },
         )
       ).org.search,

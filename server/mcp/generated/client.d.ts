@@ -3,6 +3,8 @@
 interface List {
   id: string
   name: string
+  /** Código corto de la lista: el medio del identificador de sus items (`AA` en `AA-12`). */
+  code: string | null
   /** Items sin completar. */
   open: number
   /** Items vivos. */
@@ -12,6 +14,8 @@ interface List {
 /** Un item enlazado con `[[id]]`. */
 interface Mention {
   id: string
+  /** Identificador corto (`AA-12`, o `WF-AA-12` en una org con código); sirve donde se pide un id y como `[[AA-12]]` en un texto. */
+  shortId: string | null
   listId: string
   listName: string
   title: string
@@ -20,6 +24,10 @@ interface Mention {
 
 interface Item {
   id: string
+  /** Número del item dentro de su lista. */
+  number: number | null
+  /** Identificador corto (`AA-12`, o `WF-AA-12` en una org con código); sirve donde se pide un id y como `[[AA-12]]` en un texto. */
+  shortId: string | null
   listId: string
   parentId: string | null
   /** Markdown. */
@@ -37,6 +45,8 @@ interface Item {
 
 interface SearchHit {
   id: string
+  /** Identificador corto (`AA-12`, o `WF-AA-12` en una org con código); sirve donde se pide un id y como `[[AA-12]]` en un texto. */
+  shortId: string | null
   listId: string
   listName: string
   text: string
@@ -85,6 +95,11 @@ declare const codemode: {
         id: string
         name: string
       }): Promise<List>
+      /** Cambia el código corto de una lista (2 a 8 letras mayúsculas o dígitos). Cambia el identificador de todos sus items. [checklist:write] */
+      setCode(input: {
+        id: string
+        code: string
+      }): Promise<List>
       /** Mueve una lista. `afterId`: el item o la lista tras la que va; omitido va al final y `null` al principio. [checklist:write] */
       move(input: {
         id: string
@@ -106,7 +121,7 @@ declare const codemode: {
         limit?: number
         offset?: number
       }): Promise<Item[]>
-      /** Un item vivo por id, o null si no existe. [checklist:read] */
+      /** Un item vivo por id o por identificador corto (`AA-12`), o null si no existe. [checklist:read] */
       get(input: {
         id: string
       }): Promise<Item | null>

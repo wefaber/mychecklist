@@ -4,7 +4,9 @@ import { createApp } from './app'
 import { githubClient } from './auth/github'
 import { loadConfig } from './config'
 import { openDb } from './db/connection'
+import { backfillOrgCodes } from './db/members'
 import { migrate } from './db/migrate'
+import { backfillListCodes } from './db/scoped'
 import { createBus } from './events'
 import { createGithubApi } from './github/api'
 import { createLimiter } from '@wefaber/codemode-mcp'
@@ -22,6 +24,9 @@ mkdirSync(dirname(path), { recursive: true })
 const db = openDb(path)
 const applied = migrate(db)
 if (applied.length) console.log(`migrations applied: ${applied.join(', ')}`)
+// Códigos del identificador corto (ADR 0012) para lo que se creó antes de la migración 0011.
+backfillOrgCodes(db)
+backfillListCodes(db)
 if (!github || !config.tokenKey)
   console.warn(
     'login con GitHub desactivado: faltan GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET o MYCHECKLIST_TOKEN_KEY',

@@ -12,6 +12,8 @@ import {
 
 const item = (id: string, parentId: string | null = null): Item => ({
   id,
+  number: null,
+  shortId: null,
   listId: 'l',
   parentId,
   position: id,

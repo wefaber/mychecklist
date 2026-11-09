@@ -1,6 +1,7 @@
 import type { Database } from 'bun:sqlite'
 import { DomainError } from '../errors'
 import type { Ingress } from '../ingress'
+import { codeFromName } from '../../shared/short-id'
 import { ulid } from './ids'
 import type { OrgKind, Role } from './accounts'
 
@@ -26,6 +27,8 @@ export type NewActivity = {
 export type ListRow = {
   id: string
   name: string
+  /** Código corto de la lista para el identificador del item (ADR 0012); `null` hasta que el arranque se lo asigna. */
+  code: string | null
   position: string
   createdAt: number
   updatedAt: number
@@ -37,6 +40,8 @@ export type ListRow = {
 
 export type ItemRow = {
   id: string
+  /** Número dentro de la lista (ADR 0012); `null` solo en una fila que el trigger todavía no numeró. */
+  number: number | null
   listId: string
   parentId: string | null
   position: string
@@ -51,8 +56,10 @@ export type ItemRow = {
 
 export type SearchHit = {
   id: string
+  number: number | null
   listId: string
   listName: string
+  listCode: string | null
   text: string
   doneAt: number | null
 }
@@ -74,7 +81,7 @@ export type Gap = { before: string | null; after: string | null }
 
 /** Todo el acceso a datos de una org pasa por acá, ya con el `org_id` fijado y la puerta verificada. */
 export type Scope = {
-  org: { id: string; kind: OrgKind; name: string }
+  org: { id: string; kind: OrgKind; name: string; code: string | null }
   role: Role
   activity: {
     append(entry: NewActivity, now?: number): ActivityEntry
@@ -90,6 +97,8 @@ export type Scope = {
       row: {
         id: string
         name: string
+        /** Si falta o ya está tomado, se asigna uno a partir del nombre. */
+        code?: string | null
         position: string
         createdAt?: number
         updatedAt?: number
@@ -98,6 +107,10 @@ export type Scope = {
       now: number,
     ): void
     rename(id: string, name: string, now: number): void
+    /** La lista viva con ese código, o `null`. */
+    byCode(code: string): ListRow | null
+    /** Cambia el código; el servicio ya verificó que está libre. */
+    setCode(id: string, code: string, now: number): void
     setPosition(id: string, position: string, now: number): void
     setDeleted(id: string, at: number | null, now: number): void
     /** Hueco justo después de `afterId` (o al principio si es `null`), sin contar a `exclude`. */
@@ -110,6 +123,8 @@ export type Scope = {
     /** Items vivos de una lista, planos y en orden (el cliente arma el árbol con `parentId`). */
     inList(listId: string): ItemRow[]
     get(id: string, withDeleted?: boolean): ItemRow | null
+    /** El item vivo con ese número en la lista, o `null`. */
+    byNumber(listId: string, number: number): ItemRow | null
     insert(
       row: {
         id: string
@@ -205,6 +220,7 @@ const toEntry = (r: ActivityRow): ActivityEntry => ({
 type ListSqlRow = {
   id: string
   name: string
+  code: string | null
   position: string
   created_at: number
   updated_at: number
@@ -216,6 +232,7 @@ type ListSqlRow = {
 const toList = (r: ListSqlRow): ListRow => ({
   id: r.id,
   name: r.name,
+  code: r.code,
   position: r.position,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
@@ -226,6 +243,7 @@ const toList = (r: ListSqlRow): ListRow => ({
 
 type ItemSqlRow = {
   id: string
+  number: number | null
   list_id: string
   parent_id: string | null
   position: string
@@ -239,6 +257,7 @@ type ItemSqlRow = {
 
 const toItem = (r: ItemSqlRow): ItemRow => ({
   id: r.id,
+  number: r.number,
   listId: r.list_id,
   parentId: r.parent_id,
   position: r.position,
@@ -250,26 +269,30 @@ const toItem = (r: ItemSqlRow): ItemRow => ({
   deletedAt: r.deleted_at,
 })
 
-const LIST_SELECT = `SELECT l.id, l.name, l.position, l.created_at, l.updated_at, l.deleted_at,
+const LIST_SELECT = `SELECT l.id, l.name, l.code, l.position, l.created_at, l.updated_at, l.deleted_at,
   (SELECT COUNT(*) FROM items i WHERE i.org_id = l.org_id AND i.list_id = l.id AND i.deleted_at IS NULL AND i.done_at IS NULL) AS open,
   (SELECT COUNT(*) FROM items i WHERE i.org_id = l.org_id AND i.list_id = l.id AND i.deleted_at IS NULL) AS total
   FROM lists l`
 
 const ITEM_COLUMNS =
-  'id, list_id, parent_id, position, text, done_at, resolution, created_at, updated_at, deleted_at'
+  'id, number, list_id, parent_id, position, text, done_at, resolution, created_at, updated_at, deleted_at'
 
 type HitSqlRow = {
   id: string
+  number: number | null
   list_id: string
   list_name: string
+  list_code: string | null
   text: string
   done_at: number | null
 }
 
 const toHit = (r: HitSqlRow): RefHit => ({
   id: r.id,
+  number: r.number,
   listId: r.list_id,
   listName: r.list_name,
+  listCode: r.list_code,
   text: r.text,
   doneAt: r.done_at,
 })
@@ -307,9 +330,10 @@ export function openScope(
   opts: { orgId: string; userId: string; ingress: Ingress },
 ): Scope {
   const org = db
-    .query<{ id: string; kind: OrgKind; name: string }, [string]>(
-      'SELECT id, kind, name FROM orgs WHERE id = ?',
-    )
+    .query<
+      { id: string; kind: OrgKind; name: string; code: string | null },
+      [string]
+    >('SELECT id, kind, name, code FROM orgs WHERE id = ?')
     .get(opts.orgId)
   const member = org
     ? db
@@ -410,12 +434,25 @@ export function openScope(
           : null
       },
       insert(row, now) {
+        const taken = new Set(
+          db
+            .query<{ code: string }, [string]>(
+              'SELECT code FROM lists WHERE org_id = ? AND code IS NOT NULL',
+            )
+            .all(orgId)
+            .map((r) => r.code),
+        )
+        const code =
+          row.code && !taken.has(row.code)
+            ? row.code
+            : codeFromName(row.name, taken)
         db.query(
-          'INSERT INTO lists (id, org_id, name, position, created_by, created_at, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          'INSERT INTO lists (id, org_id, name, code, position, created_by, created_at, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
         ).run(
           row.id,
           orgId,
           row.name,
+          code,
           row.position,
           userId,
           row.createdAt ?? now,
@@ -427,6 +464,19 @@ export function openScope(
         db.query(
           'UPDATE lists SET name = ?, updated_at = ? WHERE org_id = ? AND id = ?',
         ).run(name, now, orgId, id)
+      },
+      byCode(code) {
+        const row = db
+          .query<ListSqlRow, [string, string]>(
+            `${LIST_SELECT} WHERE l.org_id = ? AND l.code = ? AND l.deleted_at IS NULL`,
+          )
+          .get(orgId, code)
+        return row ? toList(row) : null
+      },
+      setCode(id, code, now) {
+        db.query(
+          'UPDATE lists SET code = ?, updated_at = ? WHERE org_id = ? AND id = ?',
+        ).run(code, now, orgId, id)
       },
       setPosition(id, position, now) {
         db.query(
@@ -487,6 +537,14 @@ export function openScope(
         return row && (withDeleted || row.deleted_at === null)
           ? toItem(row)
           : null
+      },
+      byNumber(listId, number) {
+        const row = db
+          .query<ItemSqlRow, [string, string, number]>(
+            `SELECT ${ITEM_COLUMNS} FROM items WHERE org_id = ? AND list_id = ? AND number = ? AND deleted_at IS NULL`,
+          )
+          .get(orgId, listId, number)
+        return row ? toItem(row) : null
       },
       insert(row, now) {
         db.query(
@@ -589,30 +647,15 @@ export function openScope(
       },
       search(query, limit) {
         return db
-          .query<
-            {
-              id: string
-              list_id: string
-              list_name: string
-              text: string
-              done_at: number | null
-            },
-            [string, string, string, number]
-          >(
-            `SELECT i.id, i.list_id, l.name AS list_name, i.text, i.done_at
+          .query<HitSqlRow, [string, string, string, number]>(
+            `SELECT i.id, i.number, i.list_id, l.name AS list_name, l.code AS list_code, i.text, i.done_at
              FROM items i JOIN lists l ON l.id = i.list_id AND l.org_id = i.org_id
              WHERE i.org_id = ? AND i.deleted_at IS NULL AND l.deleted_at IS NULL
                AND (i.text LIKE ? ESCAPE '\\' OR i.resolution LIKE ? ESCAPE '\\')
              ORDER BY i.updated_at DESC LIMIT ?`,
           )
           .all(orgId, `%${escapeLike(query)}%`, `%${escapeLike(query)}%`, limit)
-          .map((r) => ({
-            id: r.id,
-            listId: r.list_id,
-            listName: r.list_name,
-            text: r.text,
-            doneAt: r.done_at,
-          }))
+          .map(toHit)
       },
     },
     refs: {
@@ -629,7 +672,7 @@ export function openScope(
       from(fromId) {
         return db
           .query<HitSqlRow, [string, string]>(
-            `SELECT i.id, i.list_id, l.name AS list_name, i.text, i.done_at
+            `SELECT i.id, i.number, i.list_id, l.name AS list_name, l.code AS list_code, i.text, i.done_at
              FROM item_refs r
              JOIN items i ON i.id = r.to_id AND i.org_id = r.org_id
              JOIN lists l ON l.id = i.list_id AND l.org_id = i.org_id
@@ -643,7 +686,7 @@ export function openScope(
         const out = new Map<string, RefHit[]>()
         const rows = db
           .query<HitSqlRow & { from_id: string }, [string, string]>(
-            `SELECT r.from_id, t.id, t.list_id, l.name AS list_name, t.text, t.done_at
+            `SELECT r.from_id, t.id, t.number, t.list_id, l.name AS list_name, l.code AS list_code, t.text, t.done_at
              FROM items s
              JOIN item_refs r ON r.from_id = s.id AND r.org_id = s.org_id
              JOIN items t ON t.id = r.to_id AND t.org_id = r.org_id
@@ -662,7 +705,7 @@ export function openScope(
       to(toId, limit) {
         return db
           .query<HitSqlRow, [string, string, number]>(
-            `SELECT i.id, i.list_id, l.name AS list_name, i.text, i.done_at
+            `SELECT i.id, i.number, i.list_id, l.name AS list_name, l.code AS list_code, i.text, i.done_at
              FROM item_refs r
              JOIN items i ON i.id = r.from_id AND i.org_id = r.org_id
              JOIN lists l ON l.id = i.list_id AND l.org_id = i.org_id
@@ -721,4 +764,39 @@ export function openScope(
       },
     },
   }
+}
+
+/**
+ * Asigna el código a las listas que no lo tienen (las anteriores a la migración 0011, o creadas por el slot viejo
+ * durante un cambio de slot). Corre al arrancar, después de migrar; no toca las que ya lo tienen. Devuelve cuántas.
+ */
+export function backfillListCodes(db: Database): number {
+  const rows = db
+    .query<{ id: string; org_id: string; name: string }, []>(
+      'SELECT id, org_id, name FROM lists WHERE code IS NULL ORDER BY org_id, created_at, id',
+    )
+    .all()
+  const takenByOrg = new Map<string, Set<string>>()
+  for (const r of rows) {
+    let taken = takenByOrg.get(r.org_id)
+    if (!taken) {
+      taken = new Set(
+        db
+          .query<{ code: string }, [string]>(
+            'SELECT code FROM lists WHERE org_id = ? AND code IS NOT NULL',
+          )
+          .all(r.org_id)
+          .map((c) => c.code),
+      )
+      takenByOrg.set(r.org_id, taken)
+    }
+    const code = codeFromName(r.name, taken)
+    taken.add(code)
+    db.query('UPDATE lists SET code = ? WHERE org_id = ? AND id = ?').run(
+      code,
+      r.org_id,
+      r.id,
+    )
+  }
+  return rows.length
 }

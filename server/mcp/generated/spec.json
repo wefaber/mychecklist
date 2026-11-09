@@ -115,6 +115,35 @@
       "verbException": "Cambia solo el nombre; `update` sugeriría que se puede cambiar cualquier campo."
     },
     {
+      "id": "checklist.lists.setCode",
+      "scope": "checklist:write",
+      "summary": "Cambia el código corto de una lista (2 a 8 letras mayúsculas o dígitos). Cambia el identificador de todos sus items.",
+      "input": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "code"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "maxLength": 40,
+            "type": "string"
+          },
+          "code": {
+            "minLength": 2,
+            "maxLength": 8,
+            "type": "string"
+          }
+        }
+      },
+      "output": {
+        "$ref": "List"
+      },
+      "verbException": "Cambia solo el código corto; `update` sugeriría que se puede cambiar cualquier campo."
+    },
+    {
       "id": "checklist.lists.move",
       "scope": "checklist:write",
       "summary": "Mueve una lista. `afterId`: el item o la lista tras la que va; omitido va al final y `null` al principio.",
@@ -229,7 +258,7 @@
     {
       "id": "checklist.items.get",
       "scope": "checklist:read",
-      "summary": "Un item vivo por id, o null si no existe.",
+      "summary": "Un item vivo por id o por identificador corto (`AA-12`), o null si no existe.",
       "input": {
         "additionalProperties": false,
         "type": "object",
@@ -546,6 +575,7 @@
       "required": [
         "id",
         "name",
+        "code",
         "open",
         "total"
       ],
@@ -555,6 +585,17 @@
         },
         "name": {
           "type": "string"
+        },
+        "code": {
+          "description": "Código corto de la lista: el medio del identificador de sus items (`AA` en `AA-12`).",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "open": {
           "description": "Items sin completar.",
@@ -571,6 +612,7 @@
       "type": "object",
       "required": [
         "id",
+        "shortId",
         "listId",
         "listName",
         "title",
@@ -579,6 +621,17 @@
       "properties": {
         "id": {
           "type": "string"
+        },
+        "shortId": {
+          "description": "Identificador corto (`AA-12`, o `WF-AA-12` en una org con código); sirve donde se pide un id y como `[[AA-12]]` en un texto.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "listId": {
           "type": "string"
@@ -598,6 +651,8 @@
       "type": "object",
       "required": [
         "id",
+        "number",
+        "shortId",
         "listId",
         "parentId",
         "text",
@@ -611,6 +666,28 @@
       "properties": {
         "id": {
           "type": "string"
+        },
+        "number": {
+          "description": "Número del item dentro de su lista.",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "shortId": {
+          "description": "Identificador corto (`AA-12`, o `WF-AA-12` en una org con código); sirve donde se pide un id y como `[[AA-12]]` en un texto.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "listId": {
           "type": "string"
@@ -674,6 +751,7 @@
       "type": "object",
       "required": [
         "id",
+        "shortId",
         "listId",
         "listName",
         "text",
@@ -682,6 +760,17 @@
       "properties": {
         "id": {
           "type": "string"
+        },
+        "shortId": {
+          "description": "Identificador corto (`AA-12`, o `WF-AA-12` en una org con código); sirve donde se pide un id y como `[[AA-12]]` en un texto.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "listId": {
           "type": "string"

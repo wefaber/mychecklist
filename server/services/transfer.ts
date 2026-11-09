@@ -108,6 +108,7 @@ export async function exportOrg(
     lists: scope.lists.dump().map((l) => ({
       id: l.id,
       name: l.name,
+      code: l.code,
       position: l.position,
       createdAt: l.createdAt,
       updatedAt: l.updatedAt,
@@ -272,6 +273,7 @@ export async function importOrg(
         {
           id: listId,
           name: l.name,
+          code: l.code,
           position,
           createdAt: l.createdAt,
           updatedAt: l.updatedAt,
