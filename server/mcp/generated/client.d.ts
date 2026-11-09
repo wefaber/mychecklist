@@ -147,7 +147,7 @@ declare const codemode: {
         id: string
         text: string
       }): Promise<Item>
-      /** Completa o reabre un item. Al completar, `resolution` (Markdown) guarda con qué se cerró: omitida deja la que hay y en blanco la borra. Reabrir la conserva. [checklist:write] */
+      /** Completa o reabre un item. Al completar, `resolution` (Markdown) guarda con qué se cerró: omitida deja la que hay y en blanco la borra. Reabrir la conserva. Si el texto del item tiene casillas (`- [ ]`), todas tienen que estar marcadas para completarlo; si no, falla con `INVALID_INPUT`. [checklist:write] */
       setDone(input: {
         id: string
         done: boolean

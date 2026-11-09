@@ -479,7 +479,7 @@ const OPS = [
     verbException:
       'Marca o desmarca como hecho; es la acción más frecuente y no es un `update` genérico.',
     summary:
-      'Completa o reabre un item. Al completar, `resolution` (Markdown) guarda con qué se cerró: omitida deja la que hay y en blanco la borra. Reabrir la conserva.',
+      'Completa o reabre un item. Al completar, `resolution` (Markdown) guarda con qué se cerró: omitida deja la que hay y en blanco la borra. Reabrir la conserva. Si el texto del item tiene casillas (`- [ ]`), todas tienen que estar marcadas para completarlo; si no, falla con `INVALID_INPUT`.',
     input: Type.Object(
       {
         id: Id,

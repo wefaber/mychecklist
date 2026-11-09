@@ -1,4 +1,5 @@
 import { useNavigate } from '@tanstack/react-router'
+import { closeBlocker } from '@shared/checkboxes'
 import { titleOf } from '@shared/title'
 import { Button, Dock, EmptyState, IconButton } from '@wefaber/ui'
 import {
@@ -470,6 +471,9 @@ function DockBody({
         )}
         {t('dock.done')}
       </button>
+      {!item.done && closeBlocker(item.text) ? (
+        <p className="-mt-2 text-meta text-muted">{closeBlocker(item.text)}</p>
+      ) : null}
 
       {!item.parentId ? (
         <section aria-labelledby="dock-subs" className="flex flex-col gap-2">
