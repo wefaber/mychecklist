@@ -222,6 +222,9 @@ describe('registry: operaciones', () => {
     const l2 = await call('lists.create', { name: 'Dos', afterId: null })
     await call('lists.get', { id: l1.id })
     await call('lists.rename', { id: l1.id, name: 'Uno bis' })
+    expect((await call('lists.setCode', { id: l1.id, code: 'uno' })).code).toBe(
+      'UNO',
+    )
     await call('lists.move', { id: l2.id })
     const a = await call('items.create', { listId: l1.id, text: 'a' })
     const b = await call('items.create', {

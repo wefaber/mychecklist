@@ -1,5 +1,6 @@
 import { between } from '../../shared/order'
-import { extractRefs } from '../../shared/refs'
+import { extractRefs, resolveShortRefs } from '../../shared/refs'
+import { formatShortId, parseShortId } from '../../shared/short-id'
 import { titleOf } from '../../shared/title'
 import { ulid } from '../db/ids'
 import {
@@ -16,6 +17,8 @@ import { cleanText, MAX_ITEMS_PER_LIST, MAX_TEXT } from './validate'
 /** Un item mencionado por otro (o que lo menciona): lo mínimo para dibujar un chip. */
 export type Mention = {
   id: string
+  /** Identificador corto (`AA-12`, ADR 0012); `null` si la lista todavía no tiene código. */
+  shortId: string | null
   listId: string
   listName: string
   /** Primera línea con contenido, sin marcas de Markdown y acotada (`shared/title.ts`); puede quedar vacío. */
@@ -23,8 +26,15 @@ export type Mention = {
   done: boolean
 }
 
-const mention = (h: RefHit): Mention => ({
+const shortIdOf = (
+  orgCode: string | null,
+  listCode: string | null,
+  number: number | null,
+) => (listCode && number ? formatShortId(orgCode, listCode, number) : null)
+
+const mention = (scope: Scope, h: RefHit): Mention => ({
   id: h.id,
+  shortId: shortIdOf(scope.org.code, h.listCode, h.number),
   listId: h.listId,
   listName: h.listName,
   title: titleOf(h.text),
@@ -33,6 +43,9 @@ const mention = (h: RefHit): Mention => ({
 
 export type ItemView = {
   id: string
+  /** Número dentro de la lista y identificador corto (`AA-12`, `WF-AA-12`); `null` si todavía no hay código. */
+  number: number | null
+  shortId: string | null
   orgId: string
   listId: string
   parentId: string | null
@@ -47,8 +60,16 @@ export type ItemView = {
   mentions: Mention[]
 }
 
-const view = (orgId: string, i: ItemRow, mentions: Mention[]): ItemView => ({
+const view = (
+  scope: Scope,
+  orgId: string,
+  i: ItemRow,
+  mentions: Mention[],
+  listCode: string | null = scope.lists.get(i.listId, true)?.code ?? null,
+): ItemView => ({
   id: i.id,
+  number: i.number,
+  shortId: shortIdOf(scope.org.code, listCode, i.number),
   orgId,
   listId: i.listId,
   parentId: i.parentId,
@@ -62,7 +83,32 @@ const view = (orgId: string, i: ItemRow, mentions: Mention[]): ItemView => ({
 })
 
 const present = (scope: Scope, orgId: string, i: ItemRow) =>
-  view(orgId, i, scope.refs.from(i.id).map(mention))
+  view(
+    scope,
+    orgId,
+    i,
+    scope.refs.from(i.id).map((h) => mention(scope, h)),
+  )
+
+const ULID_LIKE = /^[0-9A-HJKMNP-TV-Z]{26}$/i
+
+/**
+ * El ULID de un item a partir de su ULID o de su identificador corto (`AA-12`, `WF-AA-12`), o `null` si no existe
+ * en esta org. Un prefijo de org distinto del de la org abierta no resuelve: las referencias no cruzan orgs.
+ */
+export function resolveItemId(scope: Scope, ref: string): string | null {
+  const value = ref.trim()
+  if (ULID_LIKE.test(value)) return value.toUpperCase()
+  const short = parseShortId(value)
+  if (!short) return null
+  if (short.org !== null && short.org !== scope.org.code) return null
+  const list = scope.lists.byCode(short.list)
+  return list ? (scope.items.byNumber(list.id, short.number)?.id ?? null) : null
+}
+
+/** Deja el texto con ULID donde la persona escribió `[[AA-12]]`; lo que no resuelve queda como estaba. */
+const withUlids = (scope: Scope, text: string) =>
+  resolveShortRefs(text, (short) => resolveItemId(scope, short))
 
 /**
  * Deja el índice de referencias igual al texto: solo cuentan ids de items de esta org (borrados incluidos, por si
@@ -116,14 +162,20 @@ export function listItems(
   listId: string,
 ): ItemView[] {
   const scope = openScope(db, { orgId, ...caller })
-  mustList(scope, listId)
+  const list = mustList(scope, listId)
   const mentions = scope.refs.fromList(listId)
-  return scope.items
-    .inList(listId)
-    .map((i) => view(orgId, i, (mentions.get(i.id) ?? []).map(mention)))
+  return scope.items.inList(listId).map((i) =>
+    view(
+      scope,
+      orgId,
+      i,
+      (mentions.get(i.id) ?? []).map((h) => mention(scope, h)),
+      list.code,
+    ),
+  )
 }
 
-/** Un item vivo por id, o `null` si no existe (o está borrado). */
+/** Un item vivo por id o por identificador corto, o `null` si no existe (o está borrado). */
 export function getItem(
   { db }: Pick<Deps, 'db'>,
   caller: Caller,
@@ -131,7 +183,8 @@ export function getItem(
   id: string,
 ): ItemView | null {
   const scope = openScope(db, { orgId, ...caller })
-  const row = scope.items.get(id)
+  const real = resolveItemId(scope, id)
+  const row = real ? scope.items.get(real) : null
   return row ? present(scope, orgId, row) : null
 }
 
@@ -144,8 +197,11 @@ export function listBacklinks(
 ): Mention[] {
   const scope = openScope(db, { orgId, ...caller })
   must(scope, itemId)
-  return scope.refs.to(itemId, MAX_BACKLINKS).map(mention)
+  return scope.refs.to(itemId, MAX_BACKLINKS).map((h) => mention(scope, h))
 }
+
+/** Un resultado de búsqueda con su identificador corto. */
+export type Found = SearchHit & { shortId: string | null }
 
 export function searchItems(
   { db }: Pick<Deps, 'db'>,
@@ -153,12 +209,35 @@ export function searchItems(
   orgId: string,
   query: string,
   first: number,
-): SearchHit[] {
+): Found[] {
   const q = query.trim()
   const scope = openScope(db, { orgId, ...caller })
   if (!q) return []
   const limit = Math.min(Math.max(Math.trunc(first), 1), 50)
-  return scope.items.search(q, limit)
+  // Un identificador corto exacto (`AA-12`) va primero.
+  const exactId = resolveItemId(scope, q)
+  const exact = exactId ? scope.items.get(exactId) : null
+  const list = exact ? scope.lists.get(exact.listId) : null
+  const hits = scope.items.search(q, limit)
+  const found = (h: SearchHit): Found => ({
+    ...h,
+    shortId: shortIdOf(scope.org.code, h.listCode, h.number),
+  })
+  if (!exact || !list) return hits.map(found)
+  return [
+    {
+      id: exact.id,
+      number: exact.number,
+      listId: list.id,
+      listName: list.name,
+      listCode: list.code,
+      text: exact.text,
+      doneAt: exact.doneAt,
+    },
+    ...hits.filter((h) => h.id !== exact.id),
+  ]
+    .slice(0, limit)
+    .map(found)
 }
 
 export function createItem(
@@ -173,12 +252,12 @@ export function createItem(
   },
   now = Date.now(),
 ): ItemView {
-  const text = cleanText(input.text, {
+  const scope = openScope(db, { orgId: input.orgId, ...caller })
+  const text = cleanText(withUlids(scope, input.text), {
     max: MAX_TEXT,
     label: 'El texto',
     multiline: true,
   })
-  const scope = openScope(db, { orgId: input.orgId, ...caller })
   mustList(scope, input.listId)
   checkParent(scope, input.listId, input.parentId)
   if (scope.items.countInList(input.listId) >= MAX_ITEMS_PER_LIST)
@@ -226,12 +305,12 @@ export function updateItemText(
   input: { orgId: string; id: string; text: string },
   now = Date.now(),
 ): ItemView {
-  const text = cleanText(input.text, {
+  const scope = openScope(db, { orgId: input.orgId, ...caller })
+  const text = cleanText(withUlids(scope, input.text), {
     max: MAX_TEXT,
     label: 'El texto',
     multiline: true,
   })
-  const scope = openScope(db, { orgId: input.orgId, ...caller })
   const item = must(scope, input.id)
   db.transaction(() => {
     scope.items.setText(input.id, text, now)
@@ -282,7 +361,7 @@ export function setItemDone(
       ? item.resolution
       : input.resolution === null || !input.resolution.trim()
         ? null
-        : cleanText(input.resolution, {
+        : cleanText(withUlids(scope, input.resolution), {
             max: MAX_TEXT,
             label: 'La resolución',
             multiline: true,

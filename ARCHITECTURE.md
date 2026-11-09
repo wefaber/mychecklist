@@ -67,6 +67,11 @@ jobs     ┘
   acepta solo al completar (omitida deja la que hay, en blanco la borra; reabrir la conserva). Las menciones `[[id]]`
   de la resolución entran en `item_refs` junto con las del texto (`refsSource` en `services/items.ts`), y la búsqueda
   también la mira.
+- **Identificador corto:** `<ORG>-<LISTA>-<NUM>` (ADR 0012). `orgs.code` (solo equipos), `lists.code` y `items.number`
+  (contador `lists.item_seq`, nunca reutiliza) salen de la migración 0011; dos triggers numeran lo que inserte o mueva
+  un slot anterior. `resolveItemId` y `withUlids` (`services/items.ts`) convierten `AA-12` / `[[AA-12]]` al ULID al
+  leer o guardar: lo almacenado, los backlinks y el export siguen siendo por ULID. Los códigos que faltan se asignan al
+  arrancar (`backfillListCodes`, `backfillOrgCodes`).
 - **Avisos en vivo (SSE):** `GET /events?org=` exige sesión de esa puerta y membresía. Cada mutación publica un
   evento en un bus en memoria (`server/events.ts`, compartido por los dos listeners) sin datos del contenido: el
   cliente invalida y vuelve a pedir por GraphQL. Hay un ping cada 25 s; Nginx lo sirve sin buffer. Con más de un

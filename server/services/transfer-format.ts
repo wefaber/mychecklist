@@ -1,5 +1,6 @@
 import { MAX_ATTACHMENT_BYTES } from '../../shared/limits'
 import { isOrderKey } from '../../shared/order'
+import { CODE_PATTERN } from '../../shared/short-id'
 import { DomainError } from '../errors'
 import { cleanText, MAX_NAME, MAX_TEXT } from './validate'
 
@@ -30,6 +31,8 @@ export type ExportItem = {
 export type ExportList = {
   id: string
   name: string
+  /** Código corto de la lista (ADR 0012); opcional: el import genera uno si falta o ya está tomado. */
+  code: string | null
   position: string
   createdAt: number
   updatedAt: number
@@ -188,6 +191,11 @@ export function parseExport(raw: unknown): ExportFile {
     return {
       id: listId,
       name: text(o.name, `${p}.name`, { max: MAX_NAME, label: 'El nombre' }),
+      // Opcional (ADR 0012): un código que no tiene la forma esperada se descarta y el import genera uno.
+      code:
+        typeof o.code === 'string' && CODE_PATTERN.test(o.code.toUpperCase())
+          ? o.code.toUpperCase()
+          : null,
       position: key(o.position, `${p}.position`),
       createdAt: time(o.createdAt, `${p}.createdAt`),
       updatedAt: time(o.updatedAt, `${p}.updatedAt`),

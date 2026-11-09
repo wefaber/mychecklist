@@ -15,6 +15,7 @@
 | [adr/0009-organizaciones-de-equipo.md](adr/0009-organizaciones-de-equipo.md)                   | Orgs de equipo: invitaciones por login y roles          |
 | [adr/0011-orgs-vinculadas-a-github.md](adr/0011-orgs-vinculadas-a-github.md)                   | Orgs de equipo vinculadas a una org de GitHub           |
 | [adr/0013-detras-del-gateway-de-code-mode.md](adr/0013-detras-del-gateway-de-code-mode.md)     | Code Mode detrás del gateway: identidad firmada, scopes |
+| [adr/0012-identificador-corto-de-items.md](adr/0012-identificador-corto-de-items.md)           | Identificador corto `<ORG>-<LISTA>-<NUM>` de un item    |
 | [fixes-2026-10-23-v0.1.0/](fixes-2026-10-23-v0.1.0/README.md)                                  | Hallazgos de M0                                         |
 | [fixes-2026-10-23-v0.2.0/](fixes-2026-10-23-v0.2.0/README.md)                                  | Hallazgos y pendientes de M1                            |
 | [fixes-2026-10-23-v0.3.0/](fixes-2026-10-23-v0.3.0/README.md)                                  | Hallazgos y pendientes de M2                            |
@@ -27,6 +28,7 @@
 | [fixes-2026-11-09-v0.9.7/](fixes-2026-11-09-v0.9.7/README.md)                                  | Blancos táctiles de 44 px en modales y detalle          |
 | [fixes-2026-11-09-v0.10.0/](fixes-2026-11-09-v0.10.0/README.md)                                | Resolución al completar un item                         |
 | [fixes-2026-11-09-v0.13.0/](fixes-2026-11-09-v0.13.0/README.md)                                | MyChecklist detrás del gateway de Code Mode             |
+| [fixes-2026-11-09-v0.12.0/](fixes-2026-11-09-v0.12.0/README.md)                                | Identificador corto y link de un item                   |
 | `fixes-<fecha>-v<versión>/`                                                                    | Correcciones y mejoras en lote, con checkbox por ítem   |
 
 Los ADR aceptados no se editan: se reemplazan con uno nuevo que los marca como superados.

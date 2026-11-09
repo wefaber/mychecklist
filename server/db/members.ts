@@ -1,4 +1,5 @@
 import type { Database } from 'bun:sqlite'
+import { codeFromName } from '../../shared/short-id'
 import { ulid } from './ids'
 import type { OrgSummary, Role } from './accounts'
 
@@ -90,12 +91,41 @@ export function insertTeamOrg(
 ): OrgSummary {
   const id = ulid(now)
   db.query(
-    "INSERT INTO orgs (id, kind, name, created_at) VALUES (?, 'team', ?, ?)",
-  ).run(id, name, now)
+    "INSERT INTO orgs (id, kind, name, code, created_at) VALUES (?, 'team', ?, ?, ?)",
+  ).run(id, name, codeFromName(name, takenOrgCodes(db)), now)
   db.query(
     "INSERT INTO org_members (org_id, user_id, role, created_at) VALUES (?, ?, 'owner', ?)",
   ).run(id, ownerId, now)
   return { id, kind: 'team', name, role: 'owner' }
+}
+
+const takenOrgCodes = (db: Database) =>
+  new Set(
+    db
+      .query<{ code: string }, []>(
+        'SELECT code FROM orgs WHERE code IS NOT NULL',
+      )
+      .all()
+      .map((r) => r.code),
+  )
+
+/**
+ * Asigna código a las orgs de equipo que no lo tienen (las anteriores a la migración 0011). Las personales no llevan:
+ * su identificador es `<LISTA>-<NUM>` (ADR 0012). Corre al arrancar; devuelve cuántas.
+ */
+export function backfillOrgCodes(db: Database): number {
+  const taken = takenOrgCodes(db)
+  const rows = db
+    .query<{ id: string; name: string }, []>(
+      "SELECT id, name FROM orgs WHERE kind = 'team' AND code IS NULL ORDER BY created_at, id",
+    )
+    .all()
+  for (const r of rows) {
+    const code = codeFromName(r.name, taken)
+    taken.add(code)
+    db.query('UPDATE orgs SET code = ? WHERE id = ?').run(code, r.id)
+  }
+  return rows.length
 }
 
 /** Orgs de equipo donde la persona es `owner` (tope por creadora). */

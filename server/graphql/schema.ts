@@ -1,7 +1,7 @@
 import type { Database } from 'bun:sqlite'
 import SchemaBuilder from '@pothos/core'
 import type { OrgSummary, User } from '../db/accounts'
-import type { ActivityEntry, SearchHit } from '../db/scoped'
+import type { ActivityEntry } from '../db/scoped'
 import { DomainError } from '../errors'
 import type { Bus } from '../events'
 import type { Ingress } from '../ingress'
@@ -18,6 +18,7 @@ import {
   searchItems,
   setItemDone,
   updateItemText,
+  type Found,
   type ItemView,
   type Mention,
 } from '../services/items'
@@ -28,6 +29,7 @@ import {
   listLists,
   moveList,
   renameList,
+  setListCode,
   restoreList,
   type ListView,
 } from '../services/lists'
@@ -206,6 +208,12 @@ export function buildSchema() {
       'Un item enlazado con `[[id]]`, con lo mínimo para dibujar un chip.',
     fields: (t) => ({
       id: t.exposeID('id'),
+      shortId: t.string({
+        nullable: true,
+        description:
+          'Identificador corto (`AA-12`, o `WF-AA-12` en una org con código). Vale donde se pide un id y como `[[AA-12]]` en un texto.',
+        resolve: (m) => m.shortId,
+      }),
       listId: t.exposeID('listId'),
       listName: t.exposeString('listName'),
       title: t.exposeString('title'),
@@ -217,6 +225,17 @@ export function buildSchema() {
   ItemRef.implement({
     fields: (t) => ({
       id: t.exposeID('id'),
+      number: t.int({
+        nullable: true,
+        description: 'Número del item dentro de su lista.',
+        resolve: (i) => i.number,
+      }),
+      shortId: t.string({
+        nullable: true,
+        description:
+          'Identificador corto (`AA-12`, o `WF-AA-12` en una org con código). Vale donde se pide un id y como `[[AA-12]]` en un texto.',
+        resolve: (i) => i.shortId,
+      }),
       listId: t.exposeID('listId'),
       parentId: t.exposeID('parentId', { nullable: true }),
       position: t.exposeString('position'),
@@ -249,6 +268,12 @@ export function buildSchema() {
     fields: (t) => ({
       id: t.exposeID('id'),
       name: t.exposeString('name'),
+      code: t.string({
+        nullable: true,
+        description:
+          'Código corto: el medio del identificador de sus items (`AA` en `AA-12`).',
+        resolve: (l) => l.code,
+      }),
       position: t.exposeString('position'),
       open: t.exposeInt('open'),
       total: t.exposeInt('total'),
@@ -260,10 +285,16 @@ export function buildSchema() {
     }),
   })
 
-  const SearchHitRef = builder.objectRef<SearchHit>('SearchHit')
+  const SearchHitRef = builder.objectRef<Found>('SearchHit')
   SearchHitRef.implement({
     fields: (t) => ({
       id: t.exposeID('id'),
+      shortId: t.string({
+        nullable: true,
+        description:
+          'Identificador corto (`AA-12`, o `WF-AA-12` en una org con código). Vale donde se pide un id y como `[[AA-12]]` en un texto.',
+        resolve: (h) => h.shortId,
+      }),
       listId: t.exposeID('listId'),
       listName: t.exposeString('listName'),
       text: t.exposeString('text'),
@@ -472,6 +503,22 @@ export function buildSchema() {
             orgId: String(a.orgId),
             id: String(a.id),
             name: a.name,
+          }),
+      }),
+      setListCode: t.field({
+        type: ListRef,
+        description:
+          'Cambia el código corto de la lista (2 a 8 letras mayúsculas o dígitos); cambia el identificador de sus items.',
+        args: {
+          orgId: t.arg.id({ required: true }),
+          id: t.arg.id({ required: true }),
+          code: t.arg.string({ required: true }),
+        },
+        resolve: (_r, a, ctx) =>
+          setListCode(ctx, caller(ctx), {
+            orgId: String(a.orgId),
+            id: String(a.id),
+            code: a.code,
           }),
       }),
       moveList: t.field({

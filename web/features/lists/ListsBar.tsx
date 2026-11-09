@@ -4,6 +4,7 @@ import { TextField } from '../../components/TextField'
 import {
   ArrowLeft,
   ArrowRight,
+  Hash,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -32,6 +33,7 @@ export function ListsBar({
   const actions = useActions(orgId)
   const { newListOpen, setNewList } = useUi()
   const [renaming, setRenaming] = useState<string | null>(null)
+  const [coding, setCoding] = useState<string | null>(null)
   const [menu, setMenu] = useState(false)
   const active = lists.find((l) => l.id === activeId) ?? null
   const at = active ? lists.findIndex((l) => l.id === active.id) : -1
@@ -67,7 +69,22 @@ export function ListsBar({
       className="sticky top-14 z-20 flex items-center gap-1.5 overflow-x-auto bg-bg py-2"
     >
       {lists.map((l) =>
-        renaming === l.id ? (
+        coding === l.id ? (
+          <NameForm
+            key={l.id}
+            label={t('list.codeLabel')}
+            initial={l.code ?? ''}
+            maxLength={8}
+            width="w-28"
+            upper
+            help={t('list.codeHelp')}
+            onSubmit={async (code) => {
+              setCoding(null)
+              await actions.setListCode(l, code)
+            }}
+            onCancel={() => setCoding(null)}
+          />
+        ) : renaming === l.id ? (
           <NameForm
             key={l.id}
             label={t('list.nameLabel')}
@@ -112,6 +129,12 @@ export function ListsBar({
             onSelect={() => setRenaming(active.id)}
           >
             {t('list.rename')}
+          </MenuItem>
+          <MenuItem
+            icon={<Hash size={16} />}
+            onSelect={() => setCoding(active.id)}
+          >
+            {t('list.code', { code: active.code ?? '-' })}
           </MenuItem>
           {at > 0 ? (
             <MenuItem
@@ -174,12 +197,21 @@ function NameForm({
   label,
   initial = '',
   placeholder,
+  maxLength = 80,
+  width = 'w-44',
+  upper = false,
+  help,
   onSubmit,
   onCancel,
 }: {
   label: string
   initial?: string
   placeholder?: string
+  maxLength?: number
+  width?: string
+  /** El texto se escribe en mayúsculas (códigos). */
+  upper?: boolean
+  help?: string
   onSubmit: (name: string) => Promise<unknown> | unknown
   onCancel: () => void
 }) {
@@ -205,10 +237,13 @@ function NameForm({
         placeholder={placeholder}
         value={name}
         density="compact"
-        maxLength={80}
-        className="w-44"
+        maxLength={maxLength}
+        className={width}
         autoComplete="off"
-        onChange={(e) => setName(e.target.value)}
+        title={help}
+        onChange={(e) =>
+          setName(upper ? e.target.value.toUpperCase() : e.target.value)
+        }
         onKeyDown={(e) => {
           if (e.key === 'Escape') {
             e.stopPropagation()

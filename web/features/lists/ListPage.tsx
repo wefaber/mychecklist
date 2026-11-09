@@ -1,12 +1,13 @@
 import { Chip, EmptyState, Tile } from '@wefaber/ui'
 import { useNavigate } from '@tanstack/react-router'
 import { LoaderCircle } from 'lucide-react'
-import { useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { t } from '../../i18n'
 import { useShortcuts, type Shortcut } from '../../lib/shortcuts'
 import { useActions } from './actions'
 import { useItems, useLists, type Item } from './api'
 import { Composer } from './Composer'
+import { copyItemId, copyItemLink } from './copy'
 import { ItemDock } from './ItemDock'
 import { ItemRow, type RowActions } from './ItemRow'
 import {
@@ -66,7 +67,13 @@ export function ListPage({
 
   const list = lists.data?.find((l) => l.id === listId)
   const all = items.data ?? []
-  const selected = itemId ? (all.find((i) => i.id === itemId) ?? null) : null
+  // `?item=` acepta el id o el identificador corto (`AA-12`).
+  const selected = itemId
+    ? (all.find(
+        (i) =>
+          i.id === itemId || i.shortId?.toLowerCase() === itemId.toLowerCase(),
+      ) ?? null)
+    : null
   const nodes = visible(buildTree(all), filter)
   const shown = flatten(nodes)
   const topLevel = all.filter((i) => i.parentId === null)
@@ -78,6 +85,18 @@ export function ListPage({
       search: { item: id },
       replace: true,
     })
+
+  // Un link con el identificador corto (`?item=AA-12`) se normaliza al id: si cambia el código, el link abierto sigue valiendo.
+  const selectedId = selected?.id
+  useEffect(() => {
+    if (selectedId && itemId && selectedId !== itemId)
+      void navigate({
+        to: '/l/$listId',
+        params: { listId },
+        search: { item: selectedId },
+        replace: true,
+      })
+  }, [selectedId, itemId, listId, navigate])
 
   const place = async (item: Item, to: Placement & { listId?: string }) => {
     const ok = await actions.moveItem(all, item, to)
@@ -102,6 +121,8 @@ export function ListPage({
   const row: RowActions = {
     toggle: (i) => actions.setDone(i, !i.done),
     open: (i) => setSelected(i.id),
+    copyId: (i) => void copyItemId(i),
+    copyLink: (i) => void copyItemLink(i),
     remove: async (i) => {
       const neighbor =
         shown[shown.findIndex((x) => x.id === i.id) + 1] ?? shown.at(-2)

@@ -1,10 +1,20 @@
 import { useNavigate } from '@tanstack/react-router'
 import { titleOf } from '@shared/title'
 import { Button, Dock, EmptyState, IconButton } from '@wefaber/ui'
-import { AtSign, Paperclip, Square, SquareCheck, Trash2, X } from 'lucide-react'
+import {
+  AtSign,
+  Copy,
+  Link2,
+  Paperclip,
+  Square,
+  SquareCheck,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { TextArea } from '../../components/TextField'
 import { t } from '../../i18n'
+import { itemIdFromLink } from '../../lib/links'
 import { Markdown } from '../../lib/markdown'
 import type { Mention } from '../../lib/mentions'
 import { useToast } from '../../lib/toast'
@@ -17,6 +27,7 @@ import {
   uploadFile,
 } from './attachments'
 import { Composer } from './Composer'
+import { copyItemId, copyItemLink } from './copy'
 import { MentionPicker } from './MentionPicker'
 
 const WIDTH = 420
@@ -210,6 +221,27 @@ function DockBody({
         />
       </header>
 
+      <div className="flex items-center gap-1">
+        {item.shortId ? (
+          <code
+            aria-label={t('dock.shortId')}
+            className="rounded-control bg-surface-2 px-2 py-1 font-mono text-meta text-text select-all"
+          >
+            {item.shortId}
+          </code>
+        ) : null}
+        <IconButton
+          label={t('dock.copyId')}
+          icon={<Copy size={16} />}
+          onClick={() => void copyItemId(item)}
+        />
+        <IconButton
+          label={t('dock.copyLink')}
+          icon={<Link2 size={16} />}
+          onClick={() => void copyItemLink(item)}
+        />
+      </div>
+
       {parent ? (
         <p className="text-meta text-muted">
           {t('dock.parent', { text: parent.text })}
@@ -284,6 +316,17 @@ function DockBody({
             }
           }}
           onPaste={(e) => {
+            // Un link a otro item de este servidor se pega como mención: chip y backlink, no una URL.
+            const linked = itemIdFromLink(e.clipboardData.getData('text/plain'))
+            if (linked) {
+              e.preventDefault()
+              insert(
+                e.currentTarget.selectionStart,
+                e.currentTarget.selectionEnd,
+                `[[${linked}]]`,
+              )
+              return
+            }
             const files = [...e.clipboardData.files]
             // Copiar una celda de una planilla trae texto y una imagen de vista previa: el texto manda.
             if (files.length === 0 || e.clipboardData.getData('text/plain'))
@@ -349,6 +392,22 @@ function DockBody({
           maxLength={4000}
           aria-describedby="dock-resolution-help"
           onChange={(e) => setResDraft(e.target.value)}
+          onPaste={(e) => {
+            const linked = itemIdFromLink(e.clipboardData.getData('text/plain'))
+            if (!linked) return
+            e.preventDefault()
+            const el = e.currentTarget
+            const next = insertAt(
+              el.value,
+              el.selectionStart,
+              el.selectionEnd,
+              `[[${linked}]]`,
+            )
+            setResDraft(next.text)
+            requestAnimationFrame(() =>
+              el.setSelectionRange(next.caret, next.caret),
+            )
+          }}
           onBlur={saveResolution}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -385,6 +444,7 @@ function DockBody({
             ...p,
             {
               id,
+              shortId: hit.shortId,
               listId: hit.listId,
               listName: hit.listName,
               title: titleOf(hit.text),
