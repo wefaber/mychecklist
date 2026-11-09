@@ -4,7 +4,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createApp } from './app'
 import { sessionCookieName } from './auth/cookies'
-import type { GithubClient, GithubProfile } from './auth/github'
+import type {
+  GithubClient,
+  GithubOrgMembership,
+  GithubProfile,
+} from './auth/github'
 import { loadConfig, type Config } from './config'
 import { openDb } from './db/connection'
 import { migrate } from './db/migrate'
@@ -26,7 +30,11 @@ export const config: Config = {
 }
 
 /** GitHub de mentira: los tests nunca hablan con terceros. */
-export function fakeGithub(profile: GithubProfile): GithubClient {
+export function fakeGithub(
+  profile: GithubProfile,
+  /** Membresías de la persona por login de org de GitHub; lo que no figura es 404. Un `Error` simula un fallo. */
+  memberships: Record<string, GithubOrgMembership | Error> = {},
+): GithubClient {
   return {
     authorizeUrl: (state, redirectUri) =>
       `https://github.test/authorize?state=${state}&redirect_uri=${encodeURIComponent(redirectUri)}`,
@@ -49,6 +57,11 @@ export function fakeGithub(profile: GithubProfile): GithubClient {
       }
     },
     fetchProfile: async () => profile,
+    fetchOrgMembership: async (_token, orgLogin) => {
+      const found = memberships[orgLogin]
+      if (found instanceof Error) throw found
+      return found ?? null
+    },
   }
 }
 

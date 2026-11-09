@@ -3,7 +3,9 @@ import { Elysia } from 'elysia'
 import type { Config } from '../config'
 import { DomainError } from '../errors'
 import type { Ingress } from '../ingress'
+import type { Bus } from '../events'
 import { signIn, signOut } from '../services/accounts'
+import { syncGithubMemberships } from '../services/github-orgs'
 import {
   clearCookie,
   parseCookies,
@@ -21,6 +23,7 @@ const MAX_PER_WINDOW = 20
 
 type Deps = {
   db: Database
+  bus: Bus
   ingress: Ingress
   config: Config
   github: GithubClient | null
@@ -65,7 +68,7 @@ function rateLimiter(now: () => number) {
  * Login de GitHub, cierre de sesión. Es HTTP plano porque el flujo de OAuth son redirecciones y cookies, no una API
  * de datos (ARCHITECTURE.md › API).
  */
-export function authRoutes({ db, ingress, config, github, now }: Deps) {
+export function authRoutes({ db, bus, ingress, config, github, now }: Deps) {
   const origin = config.origins[ingress]
   const secure = origin.startsWith('https:')
   const redirectUri = `${origin}/auth/github/callback`
@@ -124,13 +127,27 @@ export function authRoutes({ db, ingress, config, github, now }: Deps) {
       try {
         const tokens = await github.exchangeCode(code, redirectUri)
         const profile = await github.fetchProfile(tokens.accessToken)
-        const { token } = await signIn(db, {
+        const { token, user } = await signIn(db, {
           profile,
           tokens,
           ingress,
           tokenKey: config.tokenKey,
           now: now(),
         })
+        // Suma o saca a la persona de las orgs vinculadas a GitHub (ADR 0011). Si GitHub falla, el login sigue igual.
+        try {
+          const caller = { userId: user.id, ingress, via: 'web' as const }
+          const changed = await syncGithubMemberships(
+            db,
+            caller,
+            { accessToken: tokens.accessToken, client: github },
+            now(),
+          )
+          for (const orgId of changed)
+            bus.publish({ orgId, scope: 'members', actorId: user.id })
+        } catch (error) {
+          console.error('github org sync failed', error)
+        }
         const returnTo = safeReturnTo(
           encodedReturn
             ? Buffer.from(encodedReturn, 'base64url').toString()

@@ -10,6 +10,8 @@ export type Member = {
   name: string | null
   avatarUrl: string | null
   role: OrgRole
+  /** `github`: lo mantiene el vínculo con la org de GitHub; `manual`: invitado o creador. */
+  source: 'manual' | 'github'
   joinedAt: string
 }
 
@@ -24,7 +26,7 @@ export type Invitation = {
   expiresAt: string
 }
 
-const MEMBER = 'userId login name avatarUrl role joinedAt'
+const MEMBER = 'userId login name avatarUrl role source joinedAt'
 const INVITATION = 'id orgId orgName login role invitedBy createdAt expiresAt'
 
 export function useMembers(orgId: string | null) {
@@ -174,6 +176,65 @@ export function useLeaveOrg(orgId: string) {
   return useMutation({
     mutationFn: async () =>
       gql(`mutation($o: ID!) { leaveOrg(orgId: $o) }`, { o: orgId }),
+    onSuccess: refresh,
+  })
+}
+
+/** Org de GitHub a la que está vinculada la org (ADR 0011), o `null`. */
+export function useGithubOrg(orgId: string) {
+  return useQuery({
+    queryKey: ['github-org', orgId],
+    queryFn: async () =>
+      (
+        await gql<{ org: { githubOrg: { login: string } | null } }>(
+          `query($o: ID!) { org(id: $o) { githubOrg { login } } }`,
+          { o: orgId },
+        )
+      ).org.githubOrg,
+  })
+}
+
+/** Vincular, desvincular o sincronizar cambia quién es miembro y con qué rol: se vuelve a pedir todo. */
+function useRefreshGithubOrg() {
+  const refresh = useRefreshTeam()
+  const client = useQueryClient()
+  return () =>
+    Promise.all([
+      refresh(),
+      client.invalidateQueries({ queryKey: ['github-org'] }),
+    ])
+}
+
+export function useLinkGithubOrg(orgId: string) {
+  const refresh = useRefreshGithubOrg()
+  return useMutation({
+    mutationFn: async (login: string) =>
+      (
+        await gql<{ linkGithubOrg: { login: string } }>(
+          `mutation($o: ID!, $l: String!) { linkGithubOrg(orgId: $o, login: $l) { login } }`,
+          { o: orgId, l: login },
+        )
+      ).linkGithubOrg,
+    onSuccess: refresh,
+  })
+}
+
+export function useUnlinkGithubOrg(orgId: string) {
+  const refresh = useRefreshGithubOrg()
+  return useMutation({
+    mutationFn: async () =>
+      gql(`mutation($o: ID!) { unlinkGithubOrg(orgId: $o) }`, { o: orgId }),
+    onSuccess: refresh,
+  })
+}
+
+/** Devuelve si algo cambió. */
+export function useSyncGithubOrgs() {
+  const refresh = useRefreshGithubOrg()
+  return useMutation({
+    mutationFn: async () =>
+      (await gql<{ syncGithubOrgs: boolean }>(`mutation { syncGithubOrgs }`))
+        .syncGithubOrgs,
     onSuccess: refresh,
   })
 }

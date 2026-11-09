@@ -9,7 +9,9 @@ import { createBus } from './events'
 import { createGithubApi } from './github/api'
 import { createLimiter } from '@wefaber/codemode-mcp'
 import { INGRESSES } from './ingress'
+import { userTokens } from './github/tokens'
 import { createGithubLinks } from './services/github'
+import { githubOrgs } from './services/github-orgs'
 
 const path = process.env.MYCHECKLIST_DB ?? './data/mychecklist.db'
 const dev = process.env.NODE_ENV !== 'production'
@@ -27,12 +29,21 @@ if (!github || !config.tokenKey)
 
 const bus = createBus()
 // Uno solo para las dos puertas: los límites de la API de GitHub y el token de instalación se comparten.
+// También los tokens de usuario: el refresh token es de un solo uso, así que renueva una sola instancia.
+const tokens = userTokens({
+  db,
+  login: github,
+  tokenKey: config.tokenKey,
+  now: Date.now,
+})
 const githubLinks = createGithubLinks({
   db,
   api: createGithubApi(config.githubApp),
   login: github,
   tokenKey: config.tokenKey,
+  tokens,
 })
+const orgsLink = githubOrgs({ db, bus, login: github, tokens })
 if (!config.githubApp)
   console.warn(
     'links a GitHub: faltan GITHUB_APP_ID o GITHUB_APP_PRIVATE_KEY, los repos públicos se resuelven con el token de quien mira',
@@ -48,6 +59,7 @@ for (const ingress of INGRESSES) {
     github,
     bus,
     githubLinks,
+    githubOrgs: orgsLink,
     limiter,
     dev,
   }).listen({

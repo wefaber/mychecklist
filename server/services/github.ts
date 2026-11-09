@@ -26,7 +26,7 @@ import {
   type GithubApi,
   type QueryResult,
 } from '../github/api'
-import { userTokens } from '../github/tokens'
+import { userTokens, type UserTokens } from '../github/tokens'
 import type { Caller } from './types'
 
 /**
@@ -78,6 +78,8 @@ type Deps = {
   api: GithubApi
   login: GithubClient | null
   tokenKey: Uint8Array | null
+  /** Tokens de usuario compartidos con otros servicios: el refresh token es de un solo uso, una sola instancia renueva. */
+  tokens?: UserTokens
   now?: () => number
 }
 
@@ -94,12 +96,9 @@ const fresh = (entry: LinkEntry, now: number) => {
 export function createGithubLinks(deps: Deps): GithubLinks {
   const { db, api } = deps
   const now = deps.now ?? Date.now
-  const tokens = userTokens({
-    db,
-    login: deps.login,
-    tokenKey: deps.tokenKey,
-    now,
-  })
+  const tokens =
+    deps.tokens ??
+    userTokens({ db, login: deps.login, tokenKey: deps.tokenKey, now })
   /** Hasta cuándo no se consulta con cada token (`app`, `user:<id>`): límite bajo, token rechazado o GitHub caído. */
   const blocked = new Map<string, number>()
   const isBlocked = (scope: string) => (blocked.get(scope) ?? 0) > now()

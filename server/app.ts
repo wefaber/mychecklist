@@ -26,7 +26,12 @@ import {
   openAttachment,
   uploadAttachment,
 } from './services/attachments'
+import { userTokens } from './github/tokens'
 import { createGithubLinks, type GithubLinks } from './services/github'
+import {
+  githubOrgs as createGithubOrgs,
+  type GithubOrgs,
+} from './services/github-orgs'
 import { getOrg } from './services/orgs'
 import { exportOrg, importOrg } from './services/transfer'
 
@@ -61,6 +66,8 @@ type AppOptions = {
   files?: FileStore
   /** Resolutor de links a GitHub compartido por los dos listeners (guarda los límites de la API en memoria). */
   githubLinks?: GithubLinks
+  /** Vincular orgs con GitHub y sincronizar membresías (ADR 0011); los dos listeners comparten uno. */
+  githubOrgs?: GithubOrgs
   /** Tope de ejecuciones de Code Mode; los dos listeners comparten el del proceso (ADR 0007). */
   limiter?: Limiter
   /** Solo los tests bajan los límites del sandbox. */
@@ -100,6 +107,19 @@ export function createApp(db: Database, opts: AppOptions = {}) {
       tokenKey: config.tokenKey,
       now,
     })
+  const githubOrgs =
+    opts.githubOrgs ??
+    createGithubOrgs({
+      db,
+      bus,
+      login: opts.github ?? null,
+      tokens: userTokens({
+        db,
+        login: opts.github ?? null,
+        tokenKey: config.tokenKey,
+        now,
+      }),
+    })
   const secure = config.origins[ingress].startsWith('https:')
   const viewerOf = (request: Request) => {
     const token = parseCookies(request.headers.get('cookie'))[
@@ -125,6 +145,7 @@ export function createApp(db: Database, opts: AppOptions = {}) {
       viewer: viewerOf(request),
       loginAvailable: Boolean(opts.github && config.tokenKey),
       githubLinks,
+      githubOrgs,
     }),
     graphqlEndpoint: '/graphql',
     landingPage: false,
@@ -135,7 +156,16 @@ export function createApp(db: Database, opts: AppOptions = {}) {
   })
 
   return new Elysia()
-    .use(authRoutes({ db, ingress, config, github: opts.github ?? null, now }))
+    .use(
+      authRoutes({
+        db,
+        bus,
+        ingress,
+        config,
+        github: opts.github ?? null,
+        now,
+      }),
+    )
     .use(
       codemodeRoutes({
         db,

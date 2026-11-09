@@ -337,6 +337,22 @@ export const es = {
   'team.revoke': 'Revocar',
   'team.revokeAria': 'Revocar la invitación a {login}',
   'team.revoked': 'Revocaste la invitación a {login}.',
+  'team.github.title': 'Organización de GitHub',
+  'team.github.linked':
+    'Vinculada con {login}. Quien es miembro de esa organización en GitHub entra solo al iniciar sesión por la tailnet: como Admin si es admin allá, como Miembro si no. Quien deja la organización de GitHub sale de acá en su próximo inicio de sesión.',
+  'team.github.help':
+    'Vinculá este equipo con una organización de GitHub de la que seas admin, con la GitHub App instalada. Después no hace falta invitar a mano.',
+  'team.github.login': 'Organización de GitHub',
+  'team.github.loginPlaceholder': 'adastra-org',
+  'team.github.link': 'Vincular',
+  'team.github.didLink': 'Vinculaste el equipo con {login}.',
+  'team.github.unlink': 'Desvincular',
+  'team.github.didUnlink':
+    'Desvinculaste el equipo. Quienes entraron por GitHub siguen como miembros.',
+  'team.github.sync': 'Sincronizar mi acceso',
+  'team.github.synced': 'Tu acceso quedó al día con GitHub.',
+  'team.github.unchanged': 'No hay cambios: tu acceso ya coincide con GitHub.',
+  'team.github.badge': 'GitHub',
 
   'design.title': 'Laboratorio de diseño',
   'design.intro':

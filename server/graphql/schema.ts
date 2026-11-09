@@ -46,6 +46,8 @@ import {
   type InvitationView,
   type MemberView,
 } from '../services/members'
+import type { GithubOrgs } from '../services/github-orgs'
+import { orgGithubLink } from '../services/github-orgs'
 import { getOrg, listActivity } from '../services/orgs'
 import {
   createApiToken,
@@ -65,6 +67,8 @@ export type Context = {
   loginAvailable: boolean
   /** Resuelve links a issues y PRs de GitHub (M4, ADR 0006). */
   githubLinks: GithubLinks
+  /** Vincula orgs de equipo con orgs de GitHub y sincroniza membresías (ADR 0011). */
+  githubOrgs: GithubOrgs
 }
 
 function caller(ctx: Context): Caller {
@@ -96,6 +100,22 @@ export function buildSchema() {
     values: ['public', 'tailnet'] as const,
   })
 
+  const MemberSource = builder.enumType('MemberSource', {
+    description:
+      '`github`: entró por el vínculo con una org de GitHub y se mantiene con él; `manual`: invitado o creador.',
+    values: ['manual', 'github'] as const,
+  })
+
+  const GithubOrgLinkRef = builder.objectRef<{
+    githubOrgId: number
+    login: string
+  }>('GithubOrgLink')
+  GithubOrgLinkRef.implement({
+    fields: (t) => ({
+      login: t.exposeString('login'),
+    }),
+  })
+
   const MemberRef = builder.objectRef<MemberView>('Member')
   MemberRef.implement({
     fields: (t) => ({
@@ -104,6 +124,7 @@ export function buildSchema() {
       name: t.exposeString('name', { nullable: true }),
       avatarUrl: t.exposeString('avatarUrl', { nullable: true }),
       role: t.field({ type: Role, resolve: (m) => m.role }),
+      source: t.field({ type: MemberSource, resolve: (m) => m.source }),
       joinedAt: t.string({ resolve: (m) => iso(m.joinedAt)! }),
     }),
   })
@@ -312,6 +333,13 @@ export function buildSchema() {
       lists: t.field({
         type: [ListRef],
         resolve: (o, _a, ctx) => listLists({ db: ctx.db }, caller(ctx), o.id),
+      }),
+      githubOrg: t.field({
+        type: GithubOrgLinkRef,
+        nullable: true,
+        description:
+          'Org de GitHub a la que está vinculada (ADR 0011), o null. Quien es miembro de esa org entra solo al iniciar sesión.',
+        resolve: (o, _a, ctx) => orgGithubLink(ctx.db, caller(ctx), o.id),
       }),
       members: t.field({
         type: [MemberRef],
@@ -606,6 +634,35 @@ export function buildSchema() {
         args: { name: t.arg.string({ required: true }) },
         resolve: (_r, a, ctx) =>
           createTeamOrg(ctx.db, caller(ctx), { name: a.name }),
+      }),
+      linkGithubOrg: t.field({
+        type: GithubOrgLinkRef,
+        description:
+          'Vincula la org con una org de GitHub de la que sos admin. Solo `owner`, solo por la tailnet.',
+        args: {
+          orgId: t.arg.id({ required: true }),
+          login: t.arg.string({ required: true }),
+        },
+        resolve: (_r, a, ctx) =>
+          ctx.githubOrgs.link(caller(ctx), {
+            orgId: String(a.orgId),
+            login: a.login,
+          }),
+      }),
+      unlinkGithubOrg: t.boolean({
+        description:
+          'Quita el vínculo con GitHub; quienes entraron por él conservan el acceso. Solo `owner`.',
+        args: { orgId: t.arg.id({ required: true }) },
+        resolve: (_r, a, ctx) => {
+          ctx.githubOrgs.unlink(caller(ctx), { orgId: String(a.orgId) })
+          return true
+        },
+      }),
+      syncGithubOrgs: t.boolean({
+        description:
+          'Vuelve a leer tu membresía en GitHub y ajusta tus orgs vinculadas. Devuelve si algo cambió.',
+        resolve: async (_r, _a, ctx) =>
+          (await ctx.githubOrgs.sync(caller(ctx))).length > 0,
       }),
       inviteMember: t.field({
         type: InvitationRef,
