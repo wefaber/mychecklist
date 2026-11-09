@@ -21,6 +21,7 @@
 | [fixes-2026-10-23-v0.6.0/](fixes-2026-10-23-v0.6.0/README.md)                                  | Hallazgos y pendientes de M5                            |
 | [fixes-2026-10-23-v0.7.0/](fixes-2026-10-23-v0.7.0/README.md)                                  | Hallazgos y pendientes de M4                            |
 | [fixes-2026-10-24-v0.8.0/](fixes-2026-10-24-v0.8.0/README.md)                                  | Hallazgos y pendientes de M7                            |
+| [fixes-2026-11-09-v0.9.6/](fixes-2026-11-09-v0.9.6/README.md)                                  | Header en un menú y sin scroll horizontal en mobile     |
 | `fixes-<fecha>-v<versión>/`                                                                    | Correcciones y mejoras en lote, con checkbox por ítem   |
 
 Los ADR aceptados no se editan: se reemplazan con uno nuevo que los marca como superados.

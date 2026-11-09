@@ -5,24 +5,12 @@ import { t } from '../../i18n'
 import type { MessageKey } from '../../i18n/es'
 import { lightOnly, PALETTES, useTheme } from '../../lib/theme'
 
-/** Tema y modo. Vault es solo claro: ahí el modo queda fijo y el menú lo dice. */
-export function ThemeMenu() {
-  const [open, setOpen] = useState(false)
+/** Los temas y el modo como entradas de menú. Vault es solo claro: ahí el modo queda fijo y el menú lo dice. */
+export function ThemeItems() {
   const { palette, mode, setPalette, setMode } = useTheme()
   const fixed = lightOnly(palette)
   return (
-    <Menu
-      open={open}
-      onOpenChange={setOpen}
-      label={t('theme.title')}
-      trigger={(props) => (
-        <IconButton
-          label={t('theme.title')}
-          icon={<PaletteIcon size={18} />}
-          {...props}
-        />
-      )}
-    >
+    <>
       {PALETTES.map((p) => (
         <MenuItem
           key={p}
@@ -45,6 +33,27 @@ export function ThemeMenu() {
           {t(m === 'dark' ? 'theme.dark' : 'theme.light')}
         </MenuItem>
       ))}
+    </>
+  )
+}
+
+/** Tema y modo en su propio botón (el laboratorio `/design`). En la barra superior van dentro de `HeaderMenu`. */
+export function ThemeMenu() {
+  const [open, setOpen] = useState(false)
+  return (
+    <Menu
+      open={open}
+      onOpenChange={setOpen}
+      label={t('theme.title')}
+      trigger={(props) => (
+        <IconButton
+          label={t('theme.title')}
+          icon={<PaletteIcon size={18} />}
+          {...props}
+        />
+      )}
+    >
+      <ThemeItems />
     </Menu>
   )
 }
