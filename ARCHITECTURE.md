@@ -63,6 +63,10 @@ jobs     ┘
 - **Datos:** `lists` e `items` (con `org_id`, solo vía `scoped.ts`). Un nivel de subitems; orden fraccional y borrado
   lógico (ADR 0004). Los items y las listas se leen y mutan por `server/services/{lists,items}.ts`; GraphQL solo arma
   el `Caller` y los llama.
+- **Resolución:** `items.resolution` (migración 0009, NULL) es el Markdown con que se cerró un item. `setItemDone` la
+  acepta solo al completar (omitida deja la que hay, en blanco la borra; reabrir la conserva). Las menciones `[[id]]`
+  de la resolución entran en `item_refs` junto con las del texto (`refsSource` en `services/items.ts`), y la búsqueda
+  también la mira.
 - **Avisos en vivo (SSE):** `GET /events?org=` exige sesión de esa puerta y membresía. Cada mutación publica un
   evento en un bus en memoria (`server/events.ts`, compartido por los dos listeners) sin datos del contenido: el
   cliente invalida y vuelve a pedir por GraphQL. Hay un ping cada 25 s; Nginx lo sirve sin buffer. Con más de un
@@ -135,7 +139,8 @@ jobs     ┘
 
 ## Importar y exportar (M6)
 
-- **Formato:** un JSON con `format: "mychecklist"` y `schema` entero (ADR 0008): listas con sus items en orden de árbol,
+- **Formato:** un JSON con `format: "mychecklist"` y `schema` entero (ADR 0008; `resolution` por item es opcional y
+  aditivo, el `schema` sigue en 1): listas con sus items en orden de árbol,
   borrados lógicos incluidos, y adjuntos en base64. Sin `activity`, sin `item_refs` (se recalcula) y sin autoría.
 - **Servicio:** `server/services/transfer.ts` (`exportOrg`, `importOrg`) y `transfer-format.ts` (tipos y validación).
   Importar siempre agrega, valida todo antes de escribir y mete listas, items, referencias y registros de adjuntos en una

@@ -393,7 +393,7 @@
     {
       "id": "checklist.items.setDone",
       "scope": "checklist:write",
-      "summary": "Completa o reabre un item.",
+      "summary": "Completa o reabre un item. Al completar, `resolution` (Markdown) guarda con qué se cerró: omitida deja la que hay y en blanco la borra. Reabrir la conserva.",
       "input": {
         "additionalProperties": false,
         "type": "object",
@@ -409,6 +409,11 @@
           },
           "done": {
             "type": "boolean"
+          },
+          "resolution": {
+            "maxLength": 4000,
+            "description": "Solo al completar.",
+            "type": "string"
           }
         }
       },
@@ -598,6 +603,7 @@
         "text",
         "done",
         "doneAt",
+        "resolution",
         "createdAt",
         "updatedAt",
         "mentions"
@@ -630,6 +636,17 @@
           "anyOf": [
             {
               "description": "Fecha ISO 8601.",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resolution": {
+          "description": "Con qué se cerró el item (Markdown).",
+          "anyOf": [
+            {
               "type": "string"
             },
             {
