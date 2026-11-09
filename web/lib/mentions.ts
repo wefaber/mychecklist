@@ -3,6 +3,7 @@ import { apiUrl } from './server'
 /** Un item enlazado con `[[id]]`, como lo devuelve el servidor (`Item.mentions`, `Item.backlinks`). */
 export type Mention = {
   id: string
+  shortId: string | null
   listId: string
   listName: string
   title: string

@@ -1,4 +1,5 @@
 import { between } from '../../shared/order'
+import { checkCode } from '../../shared/short-id'
 import { ulid } from '../db/ids'
 import { openScope, type ListRow, type Scope } from '../db/scoped'
 import { DomainError } from '../errors'
@@ -9,6 +10,8 @@ export type ListView = {
   id: string
   orgId: string
   name: string
+  /** Código corto de la lista (`AA`): el medio del identificador `AA-12` de sus items (ADR 0012). */
+  code: string | null
   position: string
   open: number
   total: number
@@ -18,6 +21,7 @@ const view = (orgId: string, l: ListRow): ListView => ({
   id: l.id,
   orgId,
   name: l.name,
+  code: l.code,
   position: l.position,
   open: l.open,
   total: l.total,
@@ -107,6 +111,52 @@ export function renameList(
     )
   })()
   bus.publish({ orgId: input.orgId, scope: 'lists', actorId: caller.userId })
+  return view(input.orgId, must(scope, input.id))
+}
+
+/** Cambia el código de la lista; cambia el identificador de todos sus items (las referencias guardadas no se rompen). */
+export function setListCode(
+  { db, bus }: Deps,
+  caller: Caller,
+  input: { orgId: string; id: string; code: string },
+  now = Date.now(),
+): ListView {
+  const code = input.code.trim().toUpperCase()
+  const problem = checkCode(code)
+  if (problem) throw new DomainError('INVALID_INPUT', problem)
+  const scope = openScope(db, { orgId: input.orgId, ...caller })
+  const list = must(scope, input.id)
+  if (list.code !== code) {
+    try {
+      db.transaction(() => {
+        scope.lists.setCode(input.id, code, now)
+        scope.activity.append(
+          {
+            type: 'list.renamed',
+            entityType: 'list',
+            entityId: input.id,
+            via: via(caller),
+          },
+          now,
+        )
+      })()
+    } catch (e) {
+      // Índice único (org, código): también reserva el de las listas borradas.
+      if (e instanceof Error && /UNIQUE/i.test(e.message))
+        throw new DomainError(
+          'CONFLICT',
+          'Otra lista de la org ya usa ese código',
+        )
+      throw e
+    }
+    bus.publish({ orgId: input.orgId, scope: 'lists', actorId: caller.userId })
+    bus.publish({
+      orgId: input.orgId,
+      scope: 'list',
+      listId: input.id,
+      actorId: caller.userId,
+    })
+  }
   return view(input.orgId, must(scope, input.id))
 }
 

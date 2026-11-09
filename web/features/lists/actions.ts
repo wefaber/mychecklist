@@ -6,8 +6,8 @@ import { keys, MENTION, type Item, type List } from './api'
 import { previousSibling, type Placement } from './tree'
 import { useUndoStack } from './undo'
 
-const LIST = 'id name position open total'
-const ITEM = `id listId parentId position text done doneAt resolution createdAt updatedAt mentions { ${MENTION} }`
+const LIST = 'id name code position open total'
+const ITEM = `id number shortId listId parentId position text done doneAt resolution createdAt updatedAt mentions { ${MENTION} }`
 
 /** Llamadas crudas al servidor, sin deshacer ni avisos: las usan las acciones y también sus inversas. */
 function raw(orgId: string) {
@@ -22,6 +22,11 @@ function raw(orgId: string) {
       gql(
         `mutation($o: ID!, $id: ID!, $n: String!) { renameList(orgId: $o, id: $id, name: $n) { id } }`,
         { ...o, id, n: name },
+      ),
+    setListCode: (id: string, code: string) =>
+      gql(
+        `mutation($o: ID!, $id: ID!, $c: String!) { setListCode(orgId: $o, id: $id, code: $c) { id } }`,
+        { ...o, id, c: code },
       ),
     moveList: (id: string, afterId: string | null) =>
       gql(
@@ -87,6 +92,7 @@ const KNOWN = new Set([
   'LIMIT_REACHED',
   'NOT_FOUND',
   'FORBIDDEN',
+  'CONFLICT',
 ])
 
 /** El mensaje del servidor ya viene en español; lo que no es un fallo del dominio sale genérico. */
@@ -169,6 +175,16 @@ export function useActions(orgId: string) {
         undoable(t('undo.renameList'), t('toast.listRenamed'), () =>
           api.renameList(list.id, list.name),
         )
+    },
+
+    async setListCode(list: List, code: string) {
+      const ok = await attempt(() => api.setListCode(list.id, code))
+      if (ok && list.code)
+        undoable(t('undo.listCode'), t('toast.listCoded'), () =>
+          api.setListCode(list.id, list.code!),
+        )
+      else if (ok) show({ kind: 'info', text: t('toast.listCoded') })
+      return ok !== null
     },
 
     async moveList(lists: List[], list: List, afterId: string | null) {

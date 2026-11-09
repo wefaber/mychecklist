@@ -31,6 +31,8 @@ type Violation = {
 
 const sample = (id: string, text: string, over: Partial<Item> = {}): Item => ({
   id,
+  number: Number(id) || null,
+  shortId: `COM-${id}`,
   listId: 'sample',
   parentId: null,
   position: id,
@@ -45,8 +47,15 @@ const sample = (id: string, text: string, over: Partial<Item> = {}): Item => ({
 })
 
 const lists: List[] = [
-  { id: 'sample', name: 'Compras', position: 'a', open: 2, total: 3 },
-  { id: 'other', name: 'Casa', position: 'b', open: 0, total: 0 },
+  {
+    id: 'sample',
+    name: 'Compras',
+    code: 'COM',
+    position: 'a',
+    open: 2,
+    total: 3,
+  },
+  { id: 'other', name: 'Casa', code: 'CAS', position: 'b', open: 0, total: 0 },
 ]
 
 /** Ids de mentira con forma de ULID: el servidor real nunca los ve. */
@@ -55,6 +64,7 @@ const REF_DONE = '01JC8Q2V3N4M5P6R7S8T9VWXY0'
 const mentions: Mention[] = [
   {
     id: REF_OPEN,
+    shortId: 'COM-7',
     listId: 'sample',
     listName: 'Compras',
     title: 'Pedir el presupuesto',
@@ -62,6 +72,7 @@ const mentions: Mention[] = [
   },
   {
     id: REF_DONE,
+    shortId: 'COM-8',
     listId: 'sample',
     listName: 'Compras',
     title: 'Llamar al contador',
@@ -73,6 +84,8 @@ const noop = () => {}
 const actions: RowActions = {
   toggle: noop,
   open: noop,
+  copyId: noop,
+  copyLink: noop,
   remove: noop,
   addSub: noop,
   moveTo: noop,

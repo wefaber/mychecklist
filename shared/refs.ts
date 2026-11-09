@@ -2,6 +2,7 @@ import type { Link, Parent, Root, RootContent } from 'mdast'
 import remarkGfm from 'remark-gfm'
 import remarkParse from 'remark-parse'
 import { unified } from 'unified'
+import { SHORT_REF_SOURCE } from './short-id'
 
 /**
  * Referencias entre items: `[[<id>]]` dentro del Markdown de un item (ADR 0005). El mismo recorrido del árbol de
@@ -95,6 +96,52 @@ export function extractRefs(text: string): string[] {
   const found = new Set<string>()
   rewrite(parser.parse(text), (id) => found.add(id))
   return [...found].slice(0, MAX_REFS)
+}
+
+const SHORT_SOURCE_REF = new RegExp(
+  String.raw`(?:\\?\[){2}(${SHORT_REF_SOURCE})(?:\\?\]){2}`,
+  'g',
+)
+
+/**
+ * Cambia cada `[[AA-12]]` (identificador corto, ADR 0012) por `[[<ULID>]]`: en el texto se guarda siempre el ULID, así
+ * los backlinks, los chips y el import no necesitan saber del identificador corto. `resolve` devuelve el ULID, o
+ * `null` si no existe: esa referencia queda como la escribió la persona. Igual que `remapIds`, solo toca lo que el
+ * parser considera referencia (no el código ni el interior de links) y edita la fuente por posición.
+ */
+export function resolveShortRefs(
+  text: string,
+  resolve: (short: string) => string | null,
+): string {
+  if (!text.includes('[[')) return text
+  const edits: Edit[] = []
+  const walk = (node: Parent) => {
+    for (const child of node.children) {
+      if (child.type === 'text') {
+        const pos = child.position
+        if (!pos || pos.start.offset == null || pos.end.offset == null) continue
+        const base = pos.start.offset
+        for (const m of text
+          .slice(base, pos.end.offset)
+          .matchAll(SHORT_SOURCE_REF)) {
+          const id = resolve(m[1]!)
+          if (!id) continue
+          const start = base + m.index + m[0].indexOf(m[1]!)
+          edits.push({ start, end: start + m[1]!.length, value: id })
+        }
+      } else if (
+        child.type !== 'link' &&
+        child.type !== 'linkReference' &&
+        'children' in child
+      )
+        walk(child as Parent)
+    }
+  }
+  walk(parser.parse(text))
+  let out = text
+  for (const e of edits.sort((a, b) => b.start - a.start))
+    out = out.slice(0, e.start) + e.value + out.slice(e.end)
+  return out
 }
 
 /** Esquema de la URL de un adjunto en el texto: `attachment:<id>` (ADR 0005). */
