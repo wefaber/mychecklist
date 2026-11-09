@@ -102,6 +102,9 @@ const Item = Type.Object(
     text: Type.String({ description: 'Markdown.' }),
     done: Type.Boolean(),
     doneAt: Type.Union([Iso, Type.Null()]),
+    resolution: Type.Union([Type.String(), Type.Null()], {
+      description: 'Con qué se cerró el item (Markdown).',
+    }),
     createdAt: Iso,
     updatedAt: Iso,
     mentions: Type.Array(MentionSchema),
@@ -174,6 +177,7 @@ const itemOut = (i: ItemView): Static<typeof Item> => ({
   text: i.text,
   done: i.doneAt !== null,
   doneAt: i.doneAt === null ? null : iso(i.doneAt),
+  resolution: i.resolution,
   createdAt: iso(i.createdAt),
   updatedAt: iso(i.updatedAt),
   mentions: i.mentions.map(mentionOut),
@@ -436,9 +440,19 @@ const OPS = [
     scope: 'checklist:write',
     verbException:
       'Marca o desmarca como hecho; es la acción más frecuente y no es un `update` genérico.',
-    summary: 'Completa o reabre un item.',
+    summary:
+      'Completa o reabre un item. Al completar, `resolution` (Markdown) guarda con qué se cerró: omitida deja la que hay y en blanco la borra. Reabrir la conserva.',
     input: Type.Object(
-      { id: Id, done: Type.Boolean() },
+      {
+        id: Id,
+        done: Type.Boolean(),
+        resolution: Type.Optional(
+          Type.String({
+            maxLength: MAX_TEXT,
+            description: 'Solo al completar.',
+          }),
+        ),
+      },
       { additionalProperties: false },
     ),
     output: Item,

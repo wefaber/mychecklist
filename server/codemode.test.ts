@@ -59,3 +59,34 @@ describe('Code Mode: execute', () => {
     expect(r.body.result).toEqual(['cero', 'uno', 'dos', 'tres'])
   })
 })
+
+describe('Code Mode: resolución', () => {
+  test('setDone guarda la resolución y la lee de vuelta; reabrir la conserva', async () => {
+    const w = await world()
+    const { secret } = w.token(w.a.userId, w.orgA)
+    const r = await w.exec(
+      secret,
+      `const l = await checklist.lists.create({ name: 'Ad Astra' });
+       const i = await checklist.items.create({ listId: l.id, text: 'Definir la lista corta' });
+       const cerrado = await checklist.items.setDone({ id: i.id, done: true, resolution: 'Los puntos son X, Y, Z' });
+       const reabierto = await checklist.items.setDone({ id: i.id, done: false });
+       const leido = await checklist.items.get({ id: i.id });
+       return { cerrado: [cerrado.done, cerrado.resolution], reabierto: [reabierto.done, reabierto.resolution], leido: leido.resolution }`,
+    )
+    expect(r.body).toMatchObject({
+      ok: true,
+      result: {
+        cerrado: [true, 'Los puntos son X, Y, Z'],
+        reabierto: [false, 'Los puntos son X, Y, Z'],
+        leido: 'Los puntos son X, Y, Z',
+      },
+    })
+  })
+
+  test('el token de solo lectura ve la resolución pero no puede escribirla', async () => {
+    const w = await world()
+    const { secret } = w.token(w.a.userId, w.orgA, 'read')
+    const r = await w.exec(secret, `return typeof checklist.items.setDone`)
+    expect(r.body).toMatchObject({ ok: true, result: 'undefined' })
+  })
+})

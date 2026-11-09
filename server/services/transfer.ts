@@ -16,7 +16,7 @@ import {
   MAX_ORG_ATTACHMENT_BYTES,
   sniffImage,
 } from './attachments'
-import { syncRefs } from './items'
+import { refsSource, syncRefs } from './items'
 import {
   FORMAT,
   parseExport,
@@ -52,6 +52,7 @@ const exportItem = (i: ItemRow): ExportItem => ({
   position: i.position,
   text: i.text,
   doneAt: i.doneAt,
+  resolution: i.resolution,
   createdAt: i.createdAt,
   updatedAt: i.updatedAt,
   deletedAt: i.deletedAt,
@@ -283,7 +284,9 @@ export async function importOrg(
         for (const i of l.items) {
           if ((i.parentId === null) !== (level === null)) continue
           const mapped = remapIds(i.text, maps)
-          unmatchedRefs += mapped.unmatched
+          const mappedResolution =
+            i.resolution === null ? null : remapIds(i.resolution, maps)
+          unmatchedRefs += mapped.unmatched + (mappedResolution?.unmatched ?? 0)
           const id = itemMap.get(i.id)!
           scope.items.insert(
             {
@@ -293,13 +296,17 @@ export async function importOrg(
               position: i.position,
               text: mapped.text,
               doneAt: i.doneAt,
+              resolution: mappedResolution?.text ?? null,
               createdAt: i.createdAt,
               updatedAt: i.updatedAt,
               deletedAt: i.deletedAt,
             },
             now,
           )
-          texts.push({ id, text: mapped.text })
+          texts.push({
+            id,
+            text: refsSource(mapped.text, mappedResolution?.text ?? null),
+          })
           itemCount++
         }
     }

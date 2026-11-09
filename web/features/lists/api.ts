@@ -20,6 +20,8 @@ export type Item = {
   text: string
   done: boolean
   doneAt: string | null
+  /** Con qué se cerró el item (Markdown); reabrir la conserva. */
+  resolution: string | null
   createdAt: string
   updatedAt: string
   /** Items vivos que el texto enlaza con `[[id]]`. */
@@ -36,7 +38,7 @@ export type Hit = {
 
 const LIST = 'id name position open total'
 export const MENTION = 'id listId listName title done'
-const ITEM = `id listId parentId position text done doneAt createdAt updatedAt mentions { ${MENTION} }`
+const ITEM = `id listId parentId position text done doneAt resolution createdAt updatedAt mentions { ${MENTION} }`
 
 export const keys = {
   lists: (orgId: string) => ['lists', orgId] as const,

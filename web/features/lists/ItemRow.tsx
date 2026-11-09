@@ -7,6 +7,7 @@ import {
   IndentDecrease,
   IndentIncrease,
   ListPlus,
+  MessageSquareText,
   MoreHorizontal,
   Square,
   SquareCheck,
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react'
 import { useState, type DragEvent, type KeyboardEvent } from 'react'
 import { t } from '../../i18n'
+import { titleOf } from '@shared/title'
 import { Markdown } from '../../lib/markdown'
 import type { Item, List } from './api'
 
@@ -127,6 +129,14 @@ export function ItemRow({
             mode="row"
           />
         </span>
+        {item.resolution && titleOf(item.resolution) ? (
+          <span className="mt-0.5 flex items-center gap-1 text-meta text-muted">
+            <MessageSquareText aria-hidden size={12} className="shrink-0" />
+            <span className="min-w-0 truncate">
+              {t('item.resolution', { text: titleOf(item.resolution) })}
+            </span>
+          </span>
+        ) : null}
         {subCount > 0 ? (
           <span className="mt-0.5 flex items-center gap-1 text-meta text-muted tabular-nums">
             <CornerDownRight aria-hidden size={12} />

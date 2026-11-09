@@ -202,6 +202,11 @@ export function buildSchema() {
       text: t.exposeString('text'),
       done: t.boolean({ resolve: (i) => i.doneAt !== null }),
       doneAt: t.string({ nullable: true, resolve: (i) => iso(i.doneAt) }),
+      resolution: t.string({
+        nullable: true,
+        description: 'Con qué se cerró el item (Markdown).',
+        resolve: (i) => i.resolution,
+      }),
       createdAt: t.string({ resolve: (i) => iso(i.createdAt)! }),
       updatedAt: t.string({ resolve: (i) => iso(i.updatedAt)! }),
       mentions: t.field({
@@ -517,12 +522,18 @@ export function buildSchema() {
           orgId: t.arg.id({ required: true }),
           id: t.arg.id({ required: true }),
           done: t.arg.boolean({ required: true }),
+          resolution: t.arg.string({
+            description:
+              'Con qué se cierra (solo al completar). Omitida deja la que hay; en blanco la borra.',
+          }),
         },
         resolve: (_r, a, ctx) =>
           setItemDone(ctx, caller(ctx), {
             orgId: String(a.orgId),
             id: String(a.id),
             done: a.done,
+            // GraphQL manda `null` cuando el argumento se omite: acá omitir es "dejar la que hay".
+            resolution: a.resolution === null ? undefined : a.resolution,
           }),
       }),
       moveItem: t.field({

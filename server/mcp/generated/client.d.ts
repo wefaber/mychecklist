@@ -26,6 +26,8 @@ interface Item {
   text: string
   done: boolean
   doneAt: string | null
+  /** Con qué se cerró el item (Markdown). */
+  resolution: string | null
   /** Fecha ISO 8601. */
   createdAt: string
   /** Fecha ISO 8601. */
@@ -130,10 +132,12 @@ declare const codemode: {
         id: string
         text: string
       }): Promise<Item>
-      /** Completa o reabre un item. [checklist:write] */
+      /** Completa o reabre un item. Al completar, `resolution` (Markdown) guarda con qué se cerró: omitida deja la que hay y en blanco la borra. Reabrir la conserva. [checklist:write] */
       setDone(input: {
         id: string
         done: boolean
+        /** Solo al completar. */
+        resolution?: string
       }): Promise<Item>
       /** Mueve un item (a otra lista o de padre con `listId` y `parentId`; omitidos, donde está; `parentId: null` lo pasa a primer nivel). `afterId`: el item o la lista tras la que va; omitido va al final y `null` al principio. [checklist:write] */
       move(input: {

@@ -20,6 +20,8 @@ export type ExportItem = {
   position: string
   text: string
   doneAt: number | null
+  /** Con qué se cerró el item; ausente en los exports anteriores a v0.10. */
+  resolution: string | null
   createdAt: number
   updatedAt: number
   deletedAt: number | null
@@ -163,6 +165,14 @@ export function parseExport(raw: unknown): ExportFile {
           multiline: true,
         }),
         doneAt: timeOrNull(io.doneAt, `${ip}.doneAt`),
+        resolution:
+          io.resolution === null || io.resolution === undefined
+            ? null
+            : text(io.resolution, `${ip}.resolution`, {
+                max: MAX_TEXT,
+                label: 'La resolución',
+                multiline: true,
+              }),
         createdAt: time(io.createdAt, `${ip}.createdAt`),
         updatedAt: time(io.updatedAt, `${ip}.updatedAt`),
         deletedAt: timeOrNull(io.deletedAt, `${ip}.deletedAt`),

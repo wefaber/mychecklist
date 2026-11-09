@@ -39,6 +39,8 @@ export type ItemView = {
   position: string
   text: string
   doneAt: number | null
+  /** Con qué se cerró el item (Markdown); `null` si no se escribió una. Reabrir la conserva. */
+  resolution: string | null
   createdAt: number
   updatedAt: number
   /** Items que este menciona con `[[id]]` y que siguen vivos. */
@@ -53,6 +55,7 @@ const view = (orgId: string, i: ItemRow, mentions: Mention[]): ItemView => ({
   position: i.position,
   text: i.text,
   doneAt: i.doneAt,
+  resolution: i.resolution,
   createdAt: i.createdAt,
   updatedAt: i.updatedAt,
   mentions,
@@ -71,6 +74,13 @@ export function syncRefs(scope: Scope, id: string, text: string) {
     extractRefs(text).filter((to) => to !== id && scope.items.get(to, true)),
   )
 }
+
+/** El texto de donde salen las referencias de un item: su texto y, si la tiene, su resolución. */
+export const refsSource = (text: string, resolution: string | null) =>
+  resolution
+    ? `${text}
+${resolution}`
+    : text
 
 /** Tope de backlinks que se devuelven por item. */
 const MAX_BACKLINKS = 100
@@ -225,7 +235,7 @@ export function updateItemText(
   const item = must(scope, input.id)
   db.transaction(() => {
     scope.items.setText(input.id, text, now)
-    syncRefs(scope, input.id, text)
+    syncRefs(scope, input.id, refsSource(text, item.resolution))
     scope.activity.append(
       {
         type: 'item.edited',
@@ -248,17 +258,51 @@ export function updateItemText(
 export function setItemDone(
   { db, bus }: Deps,
   caller: Caller,
-  input: { orgId: string; id: string; done: boolean },
+  input: {
+    orgId: string
+    id: string
+    done: boolean
+    /**
+     * Con qué se cierra el item (Markdown). Omitida deja la que hay; texto en blanco la borra. Solo vale al completar:
+     * reabrir conserva la resolución y no admite una nueva.
+     */
+    resolution?: string | null
+  },
   now = Date.now(),
 ): ItemView {
   const scope = openScope(db, { orgId: input.orgId, ...caller })
   const item = must(scope, input.id)
-  if ((item.doneAt !== null) !== input.done) {
+  if (input.resolution !== undefined && !input.done)
+    throw new DomainError(
+      'INVALID_INPUT',
+      'La resolución se escribe al completar el item',
+    )
+  const resolution =
+    input.resolution === undefined
+      ? item.resolution
+      : input.resolution === null || !input.resolution.trim()
+        ? null
+        : cleanText(input.resolution, {
+            max: MAX_TEXT,
+            label: 'La resolución',
+            multiline: true,
+          })
+  const toggles = (item.doneAt !== null) !== input.done
+  const resolutionChanged = resolution !== item.resolution
+  if (toggles || resolutionChanged) {
     db.transaction(() => {
-      scope.items.setDone(input.id, input.done ? now : null, now)
+      if (toggles) scope.items.setDone(input.id, input.done ? now : null, now)
+      if (resolutionChanged) {
+        scope.items.setResolution(input.id, resolution, now)
+        syncRefs(scope, input.id, refsSource(item.text, resolution))
+      }
       scope.activity.append(
         {
-          type: input.done ? 'item.completed' : 'item.reopened',
+          type: toggles
+            ? input.done
+              ? 'item.completed'
+              : 'item.reopened'
+            : 'item.edited',
           entityType: 'item',
           entityId: input.id,
           via: via(caller),
