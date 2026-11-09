@@ -267,6 +267,10 @@ export const es = {
   'tokens.useNote':
     'Hasta 50 llamadas y 5 segundos por ejecución, una ejecución a la vez por token y 60 por minuto. Un token de solo lectura no ve las operaciones de escritura.',
 
+  'menu.open': 'Menú',
+  'menu.openPending': 'Menú, {n} invitaciones pendientes',
+  'menu.account': 'Cuenta',
+
   'orgs.menu': 'Organizaciones',
   'orgs.menuPending': 'Organizaciones, {n} invitaciones pendientes',
   'orgs.personal': 'Personal',

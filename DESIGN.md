@@ -24,6 +24,10 @@ mergeado (`--review`).
 Contenido centrado, ancho máximo 3xl en M0; la vista de lista crece en X (hasta ~1800 px) cuando haya tablas o
 tableros. Detalle del item en `Dock` a la derecha. Filtros siempre sobre el contenido que filtran.
 
+**Barra superior:** nombre, buscador (ícono en mobile) y un solo menú (`HeaderMenu`) con cuenta, importar y exportar,
+tokens de API, atajos, organización, tema y salir. Nada más se agrega a la barra: lo nuevo entra al menú. El documento
+nunca tiene scroll horizontal, a 320 px en adelante.
+
 ## Vistas y componentes (M2)
 
 - **Barra de listas** (`ListsBar`), pegada arriba: una línea con todas las listas como enlaces; se elige una a la vez.
