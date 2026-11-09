@@ -19,7 +19,7 @@ export function Toaster() {
       {toast ? (
         <div
           key={toast.id}
-          className="pointer-events-auto flex max-w-xl animate-pop-in items-center gap-3 rounded-panel border border-border bg-surface-2 py-2 pr-2 pl-4 text-body text-text shadow-float"
+          className="touch-roomy pointer-events-auto flex max-w-xl animate-pop-in items-center gap-3 rounded-panel border border-border bg-surface-2 py-2 pr-2 pl-4 text-body text-text shadow-float"
         >
           <Icon
             aria-hidden

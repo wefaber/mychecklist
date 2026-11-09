@@ -9,6 +9,19 @@
 /* Forest declara el modo claro con `:root[data-theme="light"]`; el oscuro es el valor base. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
+/*
+ * Blancos táctiles de 44 px en los modales (`Dialog` del kit), el detalle, el aviso y la barra superior. El `IconButton`
+ * del kit mide 32 px y no hay forma de pasarle otro tamaño desde un `Dialog`; esta regla sin capa gana sobre las
+ * utilidades de Tailwind. Solo con puntero táctil: con mouse no cambia nada. Sale cuando el kit lo resuelva (#27).
+ */
+@media (pointer: coarse) {
+  dialog[data-kit='Dialog'] [data-kit='IconButton'],
+  .touch-roomy [data-kit='IconButton'] {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+}
+
 /* Ancho que ocupa el panel de detalle (Dock) a la derecha; la lista se corre para no quedar tapada (≥ 1024 px). */
 :root {
   --dock-inset: 0px;
