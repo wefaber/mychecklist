@@ -17,12 +17,27 @@ export type GithubProfile = {
   avatarUrl: string | null
 }
 
+/** Membresía activa de una persona en una org de GitHub (`billing_manager` y pendientes no cuentan). */
+export type GithubOrgMembership = {
+  orgId: number
+  login: string
+  role: 'admin' | 'member'
+}
+
 export type GithubClient = {
   authorizeUrl(state: string, redirectUri: string): string
   exchangeCode(code: string, redirectUri: string): Promise<GithubTokens>
   /** Cambia un refresh token (de un solo uso) por un par de tokens nuevo. */
   refresh(refreshToken: string): Promise<GithubTokens>
   fetchProfile(accessToken: string): Promise<GithubProfile>
+  /**
+   * Membresía de quien tiene el token en esa org. `null` si no es miembro activo o GitHub no la muestra (404: la App
+   * no está instalada en la org o no es miembro); cualquier otro fallo lanza, para no confundirlo con "no es miembro".
+   */
+  fetchOrgMembership(
+    accessToken: string,
+    orgLogin: string,
+  ): Promise<GithubOrgMembership | null>
 }
 
 type TokenResponse = {
@@ -94,6 +109,37 @@ export function githubClient(
         grant_type: 'refresh_token',
         refresh_token: refreshToken,
       }),
+
+    async fetchOrgMembership(accessToken, orgLogin) {
+      const res = await fetchFn(
+        `https://api.github.com/user/memberships/orgs/${encodeURIComponent(orgLogin)}`,
+        {
+          headers: {
+            accept: 'application/vnd.github+json',
+            authorization: `Bearer ${accessToken}`,
+            'user-agent': 'mychecklist',
+          },
+        },
+      )
+      if (res.status === 404) return null
+      if (!res.ok) throw new Error(`GitHub membership failed: ${res.status}`)
+      const body = (await res.json()) as {
+        state?: string
+        role?: string
+        organization?: { id: number; login: string }
+      }
+      if (
+        body.state !== 'active' ||
+        !body.organization ||
+        (body.role !== 'admin' && body.role !== 'member')
+      )
+        return null
+      return {
+        orgId: body.organization.id,
+        login: body.organization.login,
+        role: body.role,
+      }
+    },
 
     async fetchProfile(accessToken) {
       const res = await fetchFn('https://api.github.com/user', {

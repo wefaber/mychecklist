@@ -13,6 +13,7 @@ proyecto del org en GitHub Projects.
 | M5  | Code Mode: `api_tokens`, registry, sandbox en Worker, `/codemode/*` y `/mcp`                              | Tests de escape y de límites; un `execute` crea 10 items en 3 listas                |
 | M6  | Importar y exportar                                                                                       | Round-trip JSON sin pérdida                                                         |
 | M7  | Organizaciones de equipo: invitaciones, roles                                                             | Tests de roles; acceso solo por tailnet                                             |
+| M7b | Orgs de equipo vinculadas a una org de GitHub: entrada y baja según la membresía en GitHub (ADR 0011)     | Tests de sync; vincular con la App instalada en una org real                        |
 | M8  | Desktop: device flow, keyring, caché offline, updater y release                                           | Un tag de borrador instala y actualiza                                              |
 | M9  | Ether (orbe con personalidad) y primeras funciones de IA                                                  | Orbe en los 4 temas, reduced motion, axe                                            |
 | M10 | Tags en items: prioridad, size, categoría y libres, con filtro y orden (issue #16)                        | Aislamiento por org; round-trip de export/import; un `execute` filtra por prioridad |

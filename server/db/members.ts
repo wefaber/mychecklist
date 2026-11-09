@@ -10,12 +10,16 @@ import type { OrgSummary, Role } from './accounts'
 
 export type InviteRole = 'admin' | 'member'
 
+/** `github`: entró por el vínculo con una org de GitHub y el sync lo mantiene; `manual`: invitado o creador. */
+export type MemberSource = 'manual' | 'github'
+
 export type MemberRow = {
   userId: string
   login: string
   name: string | null
   avatarUrl: string | null
   role: Role
+  source: MemberSource
   joinedAt: number
 }
 
@@ -37,6 +41,7 @@ type MemberSql = {
   name: string | null
   avatar_url: string | null
   role: Role
+  source: MemberSource
   created_at: number
 }
 
@@ -46,6 +51,7 @@ const toMember = (r: MemberSql): MemberRow => ({
   name: r.name,
   avatarUrl: r.avatar_url,
   role: r.role,
+  source: r.source,
   joinedAt: r.created_at,
 })
 
@@ -106,7 +112,7 @@ export function countOwnedTeamOrgs(db: Database, userId: string): number {
 export function listMembers(db: Database, orgId: string): MemberRow[] {
   return db
     .query<MemberSql, [string]>(
-      `SELECT m.user_id, u.login, u.name, u.avatar_url, m.role, m.created_at
+      `SELECT m.user_id, u.login, u.name, u.avatar_url, m.role, m.source, m.created_at
        FROM org_members m JOIN users u ON u.id = m.user_id
        WHERE m.org_id = ?
        ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END, u.login`,
@@ -122,7 +128,7 @@ export function getMember(
 ): MemberRow | null {
   const row = db
     .query<MemberSql, [string, string]>(
-      `SELECT m.user_id, u.login, u.name, u.avatar_url, m.role, m.created_at
+      `SELECT m.user_id, u.login, u.name, u.avatar_url, m.role, m.source, m.created_at
        FROM org_members m JOIN users u ON u.id = m.user_id
        WHERE m.org_id = ? AND m.user_id = ?`,
     )
@@ -152,13 +158,27 @@ export function insertMember(
   userId: string,
   role: Role,
   now: number,
+  source: MemberSource = 'manual',
 ) {
   db.query(
-    'INSERT INTO org_members (org_id, user_id, role, created_at) VALUES (?, ?, ?, ?)',
-  ).run(orgId, userId, role, now)
+    'INSERT INTO org_members (org_id, user_id, role, source, created_at) VALUES (?, ?, ?, ?, ?)',
+  ).run(orgId, userId, role, source, now)
 }
 
+/** Cambio de rol hecho por una persona: desde ahí el sync de GitHub no lo vuelve a tocar (`source = 'manual'`). */
 export function setMemberRole(
+  db: Database,
+  orgId: string,
+  userId: string,
+  role: Role,
+) {
+  db.query(
+    "UPDATE org_members SET role = ?, source = 'manual' WHERE org_id = ? AND user_id = ?",
+  ).run(role, orgId, userId)
+}
+
+/** Rol que viene de GitHub: conserva `source = 'github'`. */
+export function setSyncedRole(
   db: Database,
   orgId: string,
   userId: string,
@@ -285,4 +305,66 @@ export function findInvitation(
     )
     .get(orgId, login, now)
   return row ? toInvitation(row) : null
+}
+
+/** Vínculo de una org con una org de GitHub, si lo tiene. */
+export type OrgGithubLink = { githubOrgId: number; login: string }
+
+export function getOrgLink(db: Database, orgId: string): OrgGithubLink | null {
+  const row = db
+    .query<
+      { github_org_id: number | null; github_org_login: string },
+      [string]
+    >('SELECT github_org_id, github_org_login FROM orgs WHERE id = ?')
+    .get(orgId)
+  return row?.github_org_id != null
+    ? { githubOrgId: row.github_org_id, login: row.github_org_login }
+    : null
+}
+
+/** Todas las orgs de equipo vinculadas: pocas, y el sync las recorre en cada login. */
+export function listLinkedOrgs(
+  db: Database,
+): { orgId: string; githubOrgId: number; login: string }[] {
+  return db
+    .query<{ id: string; github_org_id: number; github_org_login: string }, []>(
+      "SELECT id, github_org_id, github_org_login FROM orgs WHERE kind = 'team' AND github_org_id IS NOT NULL ORDER BY id",
+    )
+    .all()
+    .map((r) => ({
+      orgId: r.id,
+      githubOrgId: r.github_org_id,
+      login: r.github_org_login,
+    }))
+}
+
+/** Id de la org de checklist que ya tiene vinculada esa org de GitHub, si hay. */
+export function findOrgByGithubId(
+  db: Database,
+  githubOrgId: number,
+): string | null {
+  return (
+    db
+      .query<{ id: string }, [number]>(
+        'SELECT id FROM orgs WHERE github_org_id = ?',
+      )
+      .get(githubOrgId)?.id ?? null
+  )
+}
+
+export function setOrgLink(
+  db: Database,
+  orgId: string,
+  link: OrgGithubLink | null,
+) {
+  db.query(
+    'UPDATE orgs SET github_org_id = ?, github_org_login = ? WHERE id = ?',
+  ).run(link?.githubOrgId ?? null, link?.login ?? null, orgId)
+}
+
+/** Al desvincular, quienes entraron por GitHub conservan el acceso: pasan a `manual`. */
+export function detachGithubMembers(db: Database, orgId: string) {
+  db.query(
+    "UPDATE org_members SET source = 'manual' WHERE org_id = ? AND source = 'github'",
+  ).run(orgId)
 }

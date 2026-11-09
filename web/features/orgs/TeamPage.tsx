@@ -5,6 +5,9 @@ import {
   MailPlus,
   Plus,
   Trash2,
+  Link2,
+  RefreshCw,
+  Unlink,
   UserMinus,
   X,
 } from 'lucide-react'
@@ -19,14 +22,18 @@ import {
   canRemove,
   useAnswerInvitation,
   useCreateTeamOrg,
+  useGithubOrg,
   useInviteMember,
   useLeaveOrg,
+  useLinkGithubOrg,
   useMembers,
   useMyInvitations,
   useOrgInvitations,
   useRemoveMember,
   useRevokeInvitation,
   useSetMemberRole,
+  useSyncGithubOrgs,
+  useUnlinkGithubOrg,
   type InviteRole,
   type Invitation,
   type Member,
@@ -210,6 +217,7 @@ function TeamOrg({
   return (
     <>
       <Members orgId={orgId} orgName={orgName} role={role} />
+      <GithubOrg orgId={orgId} role={role} />
       {admin ? <Invite orgId={orgId} role={role} /> : null}
       {admin ? <Pending orgId={orgId} role={role} /> : null}
     </>
@@ -326,6 +334,11 @@ function MemberRow({
       {me ? (
         <span className="text-meta text-muted">{t('team.you')}</span>
       ) : null}
+      {member.source === 'github' ? (
+        <span className="rounded-control bg-text/8 px-1.5 text-meta text-muted">
+          {t('team.github.badge')}
+        </span>
+      ) : null}
       <span className="text-meta text-muted">
         {t('team.joinedOn', { date: date(member.joinedAt) })}
       </span>
@@ -364,6 +377,113 @@ function MemberRow({
         ) : null}
       </span>
     </li>
+  )
+}
+
+/** Vínculo con una org de GitHub (ADR 0011): el owner vincula; cualquiera sincroniza su propio acceso. */
+function GithubOrg({ orgId, role }: { orgId: string; role: OrgRole }) {
+  const current = useGithubOrg(orgId)
+  const link = useLinkGithubOrg(orgId)
+  const unlink = useUnlinkGithubOrg(orgId)
+  const sync = useSyncGithubOrgs()
+  const show = useToast((s) => s.show)
+  const [login, setLogin] = useState('')
+  const fail = (error: unknown) => show({ kind: 'error', text: failure(error) })
+  const owner = role === 'owner'
+  if (current.isPending || current.isError) return null
+  if (!current.data && !owner) return null
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const value = login.trim().replace(/^@/, '')
+    if (!value || link.isPending) return
+    try {
+      const made = await link.mutateAsync(value)
+      setLogin('')
+      show({
+        kind: 'info',
+        text: t('team.github.didLink', { login: made.login }),
+      })
+    } catch (error) {
+      fail(error)
+    }
+  }
+
+  return (
+    <Tile title={t('team.github.title')}>
+      {current.data ? (
+        <div className="flex flex-col gap-3">
+          <p className="max-w-prose text-body">
+            {t('team.github.linked', { login: current.data.login })}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              disabled={sync.isPending}
+              onClick={async () => {
+                try {
+                  const changed = await sync.mutateAsync()
+                  show({
+                    kind: 'info',
+                    text: changed
+                      ? t('team.github.synced')
+                      : t('team.github.unchanged'),
+                  })
+                } catch (error) {
+                  fail(error)
+                }
+              }}
+            >
+              <RefreshCw aria-hidden size={14} />
+              {t('team.github.sync')}
+            </Button>
+            {owner ? (
+              <Button
+                disabled={unlink.isPending}
+                onClick={async () => {
+                  try {
+                    await unlink.mutateAsync()
+                    show({ kind: 'info', text: t('team.github.didUnlink') })
+                  } catch (error) {
+                    fail(error)
+                  }
+                }}
+              >
+                <Unlink aria-hidden size={14} />
+                {t('team.github.unlink')}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : (
+        <>
+          <p className="mb-3 max-w-prose text-meta text-muted">
+            {t('team.github.help')}
+          </p>
+          <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
+            <label className="flex flex-col gap-1 text-meta text-muted">
+              {t('team.github.login')}
+              <TextField
+                value={login}
+                maxLength={40}
+                autoComplete="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                placeholder={t('team.github.loginPlaceholder')}
+                onChange={(e) => setLogin(e.target.value)}
+              />
+            </label>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={!login.trim() || link.isPending}
+            >
+              <Link2 aria-hidden size={14} />
+              {t('team.github.link')}
+            </Button>
+          </form>
+        </>
+      )}
+    </Tile>
   )
 }
 

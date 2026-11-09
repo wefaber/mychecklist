@@ -13,6 +13,7 @@
 | [adr/0007-api-tokens-y-limites-de-code-mode.md](adr/0007-api-tokens-y-limites-de-code-mode.md) | Tokens de API, alcance por org y límites de Code Mode   |
 | [adr/0008-exportar-e-importar.md](adr/0008-exportar-e-importar.md)                             | Formato del export, ids al importar y adjuntos          |
 | [adr/0009-organizaciones-de-equipo.md](adr/0009-organizaciones-de-equipo.md)                   | Orgs de equipo: invitaciones por login y roles          |
+| [adr/0011-orgs-vinculadas-a-github.md](adr/0011-orgs-vinculadas-a-github.md)                   | Orgs de equipo vinculadas a una org de GitHub           |
 | [fixes-2026-10-23-v0.1.0/](fixes-2026-10-23-v0.1.0/README.md)                                  | Hallazgos de M0                                         |
 | [fixes-2026-10-23-v0.2.0/](fixes-2026-10-23-v0.2.0/README.md)                                  | Hallazgos y pendientes de M1                            |
 | [fixes-2026-10-23-v0.3.0/](fixes-2026-10-23-v0.3.0/README.md)                                  | Hallazgos y pendientes de M2                            |
