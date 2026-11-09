@@ -31,6 +31,19 @@ systemd.
    | `MYCHECKLIST_TAILNET_URL`                  | `http://vps-660e4a8c.tail7f613b.ts.net` (vhost de la tailnet, paso 5).                                  |
    | `GITHUB_APP_ID`                            | Id de la GitHub App (Settings › Developer settings › GitHub Apps › _About_). Links a GitHub (ADR 0006). |
    | `GITHUB_APP_PRIVATE_KEY`                   | Clave privada de la App (`.pem`), con los saltos de línea como `\n` literales en una sola línea.        |
+   | `WCM_GATEWAY_SECRET`                       | Clave HMAC compartida con el gateway de Code Mode (32+ caracteres, ADR 0013). Opcional.                 |
+
+   `WCM_GATEWAY_SECRET` es la misma que usa el gateway (`openssl rand -hex 32`). Sin ella el producto rechaza toda llamada
+   que venga firmada por el gateway y los tokens `mck_` siguen entrando directo. Alta del producto en el gateway, en el
+   host que tiene su base (una vez, y tras cada cambio del spec):
+
+   ```bash
+   bun src/cli.ts catalog publish ./spec.json --url https://checklist.wefaber.net
+   bun src/cli.ts token import --label <agente> --scopes checklist:write < token.txt  # uno por cada mck_ vigente
+   ```
+
+   El `spec.json` sale de `bun run gen` (`server/mcp/generated/spec.json`). Después se verifica contra el dominio real:
+   un `execute` por el gateway debe crear y leer una lista.
 
    `GITHUB_APP_ID` y `GITHUB_APP_PRIVATE_KEY` son opcionales y van juntas: con ellas el servidor firma un JWT de la App y
    consulta lo público con un token de instalación de solo lectura (permisos _Issues_ y _Pull requests_: _Read_). La App

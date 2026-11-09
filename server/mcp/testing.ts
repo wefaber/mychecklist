@@ -14,8 +14,14 @@ import { alice, bob, config, loginAs, setupServer } from '../testing'
 
 /** Una base con dos usuarios y una app por puerta, con límites de sandbox bajos para que los tests sean rápidos. */
 export async function world(
-  opts: { limits?: Partial<Limits>; limiter?: Limiter } = {},
+  opts: {
+    limits?: Partial<Limits>
+    limiter?: Limiter
+    /** Clave del gateway: sin ella las llamadas con identidad del gateway se rechazan. */
+    gatewaySecret?: string
+  } = {},
 ) {
+  const cfg = { ...config, gatewaySecret: opts.gatewaySecret ?? null }
   const ctx = setupServer()
   const a = await loginAs(ctx.db, alice, 'public')
   const b = await loginAs(ctx.db, bob, 'public')
@@ -28,7 +34,7 @@ export async function world(
   const apps: Record<Ingress, ReturnType<typeof createApp>> = {
     public: createApp(ctx.db, {
       ingress: 'public',
-      config,
+      config: cfg,
       bus,
       limiter,
       codemodeLimits: limits,
@@ -36,7 +42,7 @@ export async function world(
     }),
     tailnet: createApp(ctx.db, {
       ingress: 'tailnet',
-      config,
+      config: cfg,
       bus,
       limiter,
       codemodeLimits: limits,
