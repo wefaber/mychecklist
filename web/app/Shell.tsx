@@ -1,22 +1,13 @@
 import { Link, Outlet, useNavigate, useParams } from '@tanstack/react-router'
 import { IconButton, Kbd, SectionTransition } from '@wefaber/ui'
 import { useQuery } from '@tanstack/react-query'
-import {
-  CircleAlert,
-  CircleCheck,
-  ArrowDownUp,
-  Keyboard,
-  LoaderCircle,
-  Search,
-} from 'lucide-react'
+import { CircleAlert, CircleCheck, LoaderCircle, Search } from 'lucide-react'
 import { useEffect } from 'react'
 import { AccountTile } from '../features/auth/AccountTile'
 import { useViewer } from '../features/auth/useViewer'
 import { undoLast } from '../features/lists/actions'
 import { useLists, useOrgEvents } from '../features/lists/api'
 import { ListsBar } from '../features/lists/ListsBar'
-import { OrgMenu } from '../features/orgs/OrgMenu'
-import { ThemeMenu } from '../features/theme/ThemeMenu'
 import { t } from '../i18n'
 import type { MessageKey } from '../i18n/es'
 import { apiUrl } from '../lib/server'
@@ -25,6 +16,7 @@ import {
   useShortcuts,
   type Shortcut,
 } from '../lib/shortcuts'
+import { HeaderMenu } from './HeaderMenu'
 import { useUi } from './ui'
 
 type Status = 'cargando' | 'listo' | 'caído'
@@ -138,7 +130,7 @@ export function AppLayout() {
   const { loading, viewer, orgId } = useViewer()
   const lists = useLists(orgId)
   const params = useParams({ strict: false }) as { listId?: string }
-  const { setPalette, setShortcuts, setTransfer } = useUi()
+  const { setPalette } = useUi()
   useShortcutListener()
   useOrgEvents(orgId)
   useGlobalShortcuts(lists.data ?? [], params.listId ?? null)
@@ -151,37 +143,31 @@ export function AppLayout() {
       >
         {t('app.skip')}
       </a>
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-border bg-bg px-4">
+      <header className="touch-roomy sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-border bg-bg px-4">
         <Link to="/" className="font-display text-h3">
           {t('app.name')}
         </Link>
         <div className="flex items-center gap-1">
           {viewer ? (
-            <button
-              type="button"
-              onClick={() => setPalette(true)}
-              className="hidden h-8 items-center gap-2 rounded-control bg-text/8 px-3 text-body text-text transition-colors duration-(--dur-fast) hover:bg-text/12 sm:inline-flex"
-            >
-              <Search aria-hidden size={14} />
-              {t('palette.open')}
-              <Kbd keys="Mod+K" />
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setPalette(true)}
+                className="hidden h-8 items-center gap-2 rounded-control bg-text/8 px-3 text-body text-text transition-colors duration-(--dur-fast) hover:bg-text/12 sm:inline-flex"
+              >
+                <Search aria-hidden size={14} />
+                {t('palette.open')}
+                <Kbd keys="Mod+K" />
+              </button>
+              <IconButton
+                label={t('palette.open')}
+                icon={<Search size={18} />}
+                onClick={() => setPalette(true)}
+                className="sm:hidden"
+              />
+            </>
           ) : null}
-          {viewer ? (
-            <IconButton
-              label={t('transfer.title')}
-              icon={<ArrowDownUp size={18} />}
-              onClick={() => setTransfer(true)}
-            />
-          ) : null}
-          <IconButton
-            label={t('shortcuts.open')}
-            icon={<Keyboard size={18} />}
-            onClick={() => setShortcuts(true)}
-          />
-          <OrgMenu />
-          <ThemeMenu />
-          {viewer ? <AccountTile /> : null}
+          <HeaderMenu />
         </div>
       </header>
       <div className="transition-[padding] duration-(--dur-layout) ease-standard lg:pr-(--dock-inset)">
